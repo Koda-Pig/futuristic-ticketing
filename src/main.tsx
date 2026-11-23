@@ -1,3 +1,10 @@
+import { createRoot } from "react-dom/client";
+import { z } from "zod";
+import type { VenueConfig } from "./venue/schema";
+import { MockDataSource } from "./venue/dataSource";
+import { MatchHeader } from "./MatchHeader";
+import { ErrorBoundary, ErrorCard, NoWebGL, hasWebGL2 } from "./notices";
+import "./overview.css";
 import { isInspectorMode } from "./inspectorMode";
 
 const root = document.getElementById("root");
@@ -11,17 +18,51 @@ if (import.meta.env.DEV && isInspectorMode(location.search)) {
   root.innerHTML = markup;
   document.title = "Cape Point Stadium · Model inspector";
   await import("./inspector.js");
-} else if (
-  import.meta.env.DEV &&
-  new URLSearchParams(location.search).has("calibrate")
-) {
-  const [{ mountVenue }, { Calibrate }] = await Promise.all([
-    import("./stadium"),
-    import("./dev/Calibrate"),
-  ]);
-  document.title = "Cape Point Stadium · Calibrate";
-  await mountVenue(root, (venue) => <Calibrate initial={venue} />);
 } else {
-  const { mount } = await import("./stadium");
-  await mount(root);
+  const app = createRoot(root);
+  const query = new URLSearchParams(location.search);
+  const calibrate = import.meta.env.DEV && query.has("calibrate");
+  if (!calibrate && !hasWebGL2()) {
+    app.render(<NoWebGL />);
+  } else {
+    const source = new MockDataSource();
+    let failed = false;
+    try {
+      const [venue, render] = await Promise.all([
+        source.getVenue(query.get("venue") ?? "cape-point").then((venue) => {
+          if (failed) return venue;
+          if (query.has("event") && query.get("event") !== venue.event.id)
+            throw new Error("Unknown event");
+          document.title = calibrate ? venue.name + " · Calibrate" : venue.name;
+          app.render(
+            <main className="overview">
+              <MatchHeader venue={venue} />
+              <div className="boot" role="status">
+                <span className="spinner" aria-hidden="true" />
+                Loading seat picker…
+              </div>
+            </main>,
+          );
+          return venue;
+        }),
+        import.meta.env.DEV && calibrate
+          ? import("./dev/Calibrate").then(
+              ({ Calibrate }) =>
+                (venue: VenueConfig) => <Calibrate initial={venue} />,
+            )
+          : import("./stadium").then(({ renderStadium }) => renderStadium),
+      ]);
+      app.render(<ErrorBoundary>{await render(venue, source)}</ErrorBoundary>);
+    } catch (error) {
+      failed = true;
+      app.render(
+        <ErrorCard
+          title="We couldn't load this venue"
+          detail={
+            error instanceof z.ZodError ? z.prettifyError(error) : String(error)
+          }
+        />,
+      );
+    }
+  }
 }

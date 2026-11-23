@@ -1,4 +1,5 @@
-import { createRoot } from "react-dom/client";
+import { useProgress } from "@react-three/drei";
+import { MatchHeader } from "./MatchHeader";
 import {
   useEffect,
   useEffectEvent,
@@ -7,36 +8,51 @@ import {
   useState,
   Suspense,
 } from "react";
-import { z } from "zod";
 
 import { Skybox, SkyboxLights, vipView, worldPoint } from "./scene/Skybox";
 import { Crowd } from "./scene/Crowd";
 import { TicketCard } from "./TicketCard";
 import { BlockSeats } from "./scene/BlockSeats";
 import { SeatPreview } from "./scene/SeatPreview";
-import { MockDataSource } from "./venue/dataSource";
+import type { MockDataSource } from "./venue/dataSource";
 import { checkoutPayload, embedBridge, seatPayload } from "./embed/bridge";
 import { ProceduralShell } from "./scene/ProceduralShell";
 import type { Block, Seat } from "./venue/generateBowl";
 import { Stand } from "./scene/Stand";
-import { kickoff, money } from "./venue/format";
+import { money } from "./venue/format";
 import { MatchNight } from "./scene/MatchNight";
 import "./overview.css";
-import {
-  DesktopGate,
-  ErrorBoundary,
-  ErrorCard,
-  hasWebGL2,
-  Loading,
-  NoWebGL,
-} from "./notices";
+import { DesktopGate } from "./notices";
 import { Bowl } from "./scene/Bowl";
 import { Shell } from "./scene/Shell";
 import { Stage } from "./scene/Stage";
 import { generateBowl } from "./venue/generateBowl";
 import { type VenueConfig } from "./venue/schema";
 
-const source = new MockDataSource();
+/** Full-screen until the first frame, then a slim bar while the shell GLB streams in. */
+function Loading({ ready, name }: { ready: boolean; name: string }) {
+  const { active, progress } = useProgress();
+  const percent = Math.round(progress);
+  if (!ready)
+    return (
+      <div className="loading" role="status">
+        <span className="spinner" aria-hidden="true" />
+        <strong>{name}</strong>
+        <span>Preparing the 3D view…</span>
+      </div>
+    );
+  if (!active || percent >= 100) return null;
+  return (
+    <div className="loading-bar" role="status">
+      <span>Loading stadium model · {percent}%</span>
+      <progress
+        max={100}
+        value={percent}
+        aria-label="Loading the stadium model"
+      />
+    </div>
+  );
+}
 
 type VipState = { boxId: string; index: number | null; enter?: boolean };
 
@@ -46,61 +62,36 @@ const newCheckoutId = () =>
   crypto.randomUUID?.() ??
   Date.now().toString(36) + Math.random().toString(36).slice(2);
 
-/** Loads the venue, then renders `render(venue)` or a developer error. */
-export async function mountVenue(
-  root: HTMLElement,
-  render: (venue: VenueConfig) => React.ReactNode | Promise<React.ReactNode>,
+export async function renderStadium(
+  venue: VenueConfig,
+  source: MockDataSource,
 ) {
-  const reactRoot = createRoot(root);
-  try {
-    const query = new URLSearchParams(location.search);
-    const venue = await source.getVenue(query.get("venue") ?? "cape-point");
-    if (query.has("event") && query.get("event") !== venue.event.id)
-      throw new Error("Unknown event");
-    document.title = query.has("calibrate")
-      ? venue.name + " · Calibrate"
-      : venue.name;
-    reactRoot.render(<ErrorBoundary>{await render(venue)}</ErrorBoundary>);
-  } catch (error) {
-    const message =
-      error instanceof z.ZodError ? z.prettifyError(error) : String(error);
-    reactRoot.render(
-      <ErrorCard title="We couldn't load this venue" detail={message} />,
-    );
-    return;
-  }
+  const bowl = generateBowl(venue);
+  const [availability, ...boxes] = await Promise.all([
+    source.getAvailability(venue.event.id, bowl),
+    ...venue.vipBoxes.map((box) =>
+      source.getVipAvailability(venue.event.id, box.id),
+    ),
+  ]);
+  const vipAvailable = Object.fromEntries(
+    venue.vipBoxes.map((box, i) => [box.id, boxes[i]]),
+  );
+  const sold = new Set(
+    [...availability]
+      .filter(([, status]) => status === "sold")
+      .map(([id]) => id),
+  );
+  return (
+    <DesktopGate>
+      <Stadium
+        venue={venue}
+        bowl={bowl}
+        sold={sold}
+        vipAvailable={vipAvailable}
+      />
+    </DesktopGate>
+  );
 }
-
-export const mount = (root: HTMLElement) =>
-  hasWebGL2()
-    ? mountVenue(root, async (venue) => {
-        const bowl = generateBowl(venue);
-        const [availability, ...boxes] = await Promise.all([
-          source.getAvailability(venue.event.id, bowl),
-          ...venue.vipBoxes.map((box) =>
-            source.getVipAvailability(venue.event.id, box.id),
-          ),
-        ]);
-        const vipAvailable = Object.fromEntries(
-          venue.vipBoxes.map((box, i) => [box.id, boxes[i]]),
-        );
-        const sold = new Set(
-          [...availability]
-            .filter(([, status]) => status === "sold")
-            .map(([id]) => id),
-        );
-        return (
-          <DesktopGate>
-            <Stadium
-              venue={venue}
-              bowl={bowl}
-              sold={sold}
-              vipAvailable={vipAvailable}
-            />
-          </DesktopGate>
-        );
-      })
-    : createRoot(root).render(<NoWebGL />);
 
 function Stadium({
   venue,
@@ -255,7 +246,6 @@ function Stadium({
   const shown = selected ?? seat;
   const tag = useRef<HTMLOutputElement>(null);
   const active = groups.find((group) => group.stand.id === hover);
-  const { day, time } = kickoff(venue);
   const standPrices = active?.blocks
     .filter((b) => left.has(b.id))
     .map((b) => venue.pricing.tiers[b.tierId][b.standId]);
@@ -391,21 +381,7 @@ function Stadium({
           />
         ))}
       </Stage>
-      <header
-        className="matchbar"
-        style={{ borderColor: venue.branding.accent }}
-      >
-        {venue.branding.logoUrl && (
-          <img className="matchbar-logo" src={venue.branding.logoUrl} alt="" />
-        )}
-        <strong>{venue.name}</strong>
-        <h1>
-          {venue.event.home} <small>vs</small> {venue.event.away}
-        </h1>
-        <time dateTime={venue.event.startsAt}>
-          {day} · {time}
-        </time>
-      </header>
+      <MatchHeader venue={venue} />
       <output ref={tag} hidden={!active || !!block} className="stand-tag">
         {active && (
           <>

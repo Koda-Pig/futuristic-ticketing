@@ -1,30 +1,4 @@
-import { useProgress } from "@react-three/drei";
 import { Component, type ReactNode, useState } from "react";
-
-/** Full-screen until the first frame, then a slim bar while the shell GLB streams in. */
-export function Loading({ ready, name }: { ready: boolean; name: string }) {
-  const { active, progress } = useProgress();
-  const percent = Math.round(progress);
-  if (!ready)
-    return (
-      <div className="loading" role="status">
-        <span className="spinner" aria-hidden="true" />
-        <strong>{name}</strong>
-        <span>Preparing the 3D view…</span>
-      </div>
-    );
-  if (!active || percent >= 100) return null;
-  return (
-    <div className="loading-bar" role="status">
-      <span>Loading stadium model · {percent}%</span>
-      <progress
-        max={100}
-        value={percent}
-        aria-label="Loading the stadium model"
-      />
-    </div>
-  );
-}
 
 export function hasWebGL2() {
   try {
