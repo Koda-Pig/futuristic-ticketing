@@ -1,0 +1,218 @@
+{
+  "id": "cape-point",
+  "name": "Cape Point Stadium",
+  "branding": {
+    "accent": "#00dcb0",
+    "accentOn": "#10151c"
+  },
+  "locale": "en-ZA",
+  "currency": "ZAR",
+  "event": {
+    "id": "cps-2027-03-14",
+    "home": "Cape Storm",
+    "away": "Highveld Lions",
+    "startsAt": "2027-03-14T17:00:00+02:00",
+    "sport": "football"
+  },
+  "pitch": {
+    "length": 105,
+    "width": 68,
+    "kind": "football"
+  },
+  "outline": {
+    "halfLength": 64,
+    "halfWidth": 46,
+    "exponent": 3.2
+  },
+  "tiers": [
+    {
+      "id": "lower",
+      "label": "Lower Tier",
+      "offset": 0,
+      "baseHeight": 0.5,
+      "rows": 22,
+      "rowDepth": 0.8,
+      "riser": 0.44,
+      "seatWidth": 0.5,
+      "gateLetter": "L"
+    },
+    {
+      "id": "middle",
+      "label": "Middle Tier",
+      "offset": 18,
+      "baseHeight": 10.5,
+      "rows": 14,
+      "rowDepth": 0.8,
+      "riser": 0.44,
+      "seatWidth": 0.5,
+      "gateLetter": "M"
+    },
+    {
+      "id": "upper",
+      "label": "Upper Tier",
+      "offset": 30,
+      "baseHeight": 17.5,
+      "rows": 20,
+      "rowDepth": 0.8,
+      "riser": 0.44,
+      "seatWidth": 0.5,
+      "gateLetter": "U"
+    }
+  ],
+  "stands": [
+    {
+      "id": "east",
+      "label": "East Stand",
+      "from": -22.5,
+      "to": 22.5
+    },
+    {
+      "id": "south-east",
+      "label": "South East Stand",
+      "from": 22.5,
+      "to": 67.5
+    },
+    {
+      "id": "south",
+      "label": "South Stand",
+      "from": 67.5,
+      "to": 112.5
+    },
+    {
+      "id": "south-west",
+      "label": "South West Stand",
+      "from": 112.5,
+      "to": 157.5
+    },
+    {
+      "id": "west",
+      "label": "West Stand",
+      "from": 157.5,
+      "to": 202.5
+    },
+    {
+      "id": "north-west",
+      "label": "North West Stand",
+      "from": 202.5,
+      "to": 247.5
+    },
+    {
+      "id": "north",
+      "label": "North Stand",
+      "from": 247.5,
+      "to": 292.5
+    },
+    {
+      "id": "north-east",
+      "label": "North East Stand",
+      "from": 292.5,
+      "to": 337.5
+    }
+  ],
+  "blocks": {
+    "perStandPerTier": {
+      "east": 6,
+      "south-east": 6,
+      "south": 6,
+      "south-west": 6,
+      "west": 6,
+      "north-west": 6,
+      "north": 6,
+      "north-east": 6
+    },
+    "aisleWidth": 1.2,
+    "numbering": "stadium"
+  },
+  "pricing": {
+    "tiers": {
+      "lower": {
+        "east": 850,
+        "south-east": 650,
+        "south": 450,
+        "south-west": 650,
+        "west": 850,
+        "north-west": 650,
+        "north": 450,
+        "north-east": 650
+      },
+      "middle": {
+        "east": 1250,
+        "south-east": 750,
+        "south": 750,
+        "south-west": 750,
+        "west": 1250,
+        "north-west": 750,
+        "north": 750,
+        "north-east": 750
+      },
+      "upper": {
+        "east": 450,
+        "south-east": 300,
+        "south": 300,
+        "south-west": 300,
+        "west": 450,
+        "north-west": 300,
+        "north": 300,
+        "north-east": 300
+      }
+    },
+    "vip": {
+      "pricePerSeat": 3750,
+      "label": "VIP Skybox"
+    }
+  },
+  "vipBoxes": [
+    {
+      "id": "skybox-1",
+      "label": "Skybox 1",
+      "level": 2,
+      "position": [67, 12, -19.4],
+      "rotationY": -1.5707963267948966,
+      "size": [6, 3, 4],
+      "seats": 8
+    },
+    {
+      "id": "skybox-2",
+      "label": "Skybox 2",
+      "level": 2,
+      "position": [67, 12, -6.5],
+      "rotationY": -1.5707963267948966,
+      "size": [6, 3, 4],
+      "seats": 8
+    },
+    {
+      "id": "skybox-3",
+      "label": "Skybox 3",
+      "level": 2,
+      "position": [67, 12, 6.5],
+      "rotationY": -1.5707963267948966,
+      "size": [6, 3, 4],
+      "seats": 8
+    },
+    {
+      "id": "skybox-4",
+      "label": "Skybox 4",
+      "level": 2,
+      "position": [67, 12, 19.4],
+      "rotationY": -1.5707963267948966,
+      "size": [6, 3, 4],
+      "seats": 8
+    }
+  ],
+  "shell": {
+    "gltfUrl": "/venues/cape-point/shell.glb"
+  },
+  "cameras": {
+    "overview": {
+      "position": [-143, 116, 163],
+      "target": [0, 4, 0]
+    }
+  },
+  "availability": {
+    "seed": 42,
+    "soldRatio": [0.6, 0.85]
+  },
+  "embed": {
+    "allowedOrigins": []
+  }
+}

@@ -10,5 +10,5 @@ if (isInspectorMode(location.search)) {
   await import("./inspector.js");
 } else {
   const { mount } = await import("./stadium");
-  mount(root);
+  await mount(root);
 }
