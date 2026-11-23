@@ -102,6 +102,8 @@ export const venueSchema = z
     shell: z
       .object({
         gltfUrl: name,
+        // Attribution shown over the scene, as the model's licence requires.
+        credit: name.optional(),
         position: position.optional(),
         rotationY: z.number().optional(),
         scale: positive.optional(),

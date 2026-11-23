@@ -1,6 +1,6 @@
 # Stadium ticketing
 
-Run `pnpm install` and `pnpm dev`. The root page opens the empty React Three Fiber canvas. Open `/?debug=shell` for the processed Cape Point model and its camera bookmarks. Night look-dev lighting and the roof fade are on by default.
+Run `pnpm install` and `pnpm dev`. The root page opens the night-match overview. Hover a stand for its starting price, drag to orbit, or scroll to zoom. Open `/?debug=shell` for the processed Cape Point model and its camera bookmarks. Night look-dev lighting and the roof fade are on by default.
 
 Run `pnpm test` for the unit tests and `pnpm lint` for ESLint. Install Chromium once with `pnpm exec playwright install chromium --only-shell`, then run `pnpm e2e` for the browser checks.
 

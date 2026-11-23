@@ -1,0 +1,73 @@
+.overview {
+  height: 100dvh;
+  position: relative;
+  overflow: hidden;
+  background: #10151c;
+  color: #f5f8fa;
+  font:
+    14px/1.45 Inter,
+    system-ui,
+    sans-serif;
+}
+.matchbar,
+.stand-tag,
+.overview footer,
+.overview aside {
+  position: absolute;
+  pointer-events: none;
+  background: #101820ec;
+  border-radius: 7px;
+  padding: 10px 16px;
+}
+.matchbar {
+  top: 24px;
+  left: 24px;
+  border-left: 3px solid;
+  padding: 14px 22px;
+}
+.matchbar strong,
+.matchbar time {
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  color: #c5d2d6;
+}
+.matchbar h1 {
+  margin: 3px 0;
+  font-size: clamp(18px, 2vw, 30px);
+  letter-spacing: -0.04em;
+}
+.matchbar small {
+  font-weight: 400;
+  color: #b6c4ca;
+}
+.stand-tag {
+  display: grid;
+  grid-template-columns: auto auto;
+  column-gap: 16px;
+  align-items: baseline;
+}
+.stand-tag[hidden] {
+  display: none;
+}
+.stand-tag small {
+  grid-column: 1 / -1;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #bdc8cc;
+}
+.stand-tag span {
+  text-align: right;
+  font-weight: 600;
+}
+.overview footer {
+  bottom: 16px;
+  left: 16px;
+}
+.overview aside {
+  bottom: 16px;
+  right: 16px;
+  font-size: 10px;
+  color: #bdc8cc;
+  max-width: 42vw;
+}
