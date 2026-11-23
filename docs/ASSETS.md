@@ -1,14 +1,21 @@
 # Cape Point shell
 
-| Measurement | Source glTF | Shipped GLB |    Maximum |
-| ----------- | ----------: | ----------: | ---------: |
-| Triangles   |   6,156,109 |     812,098 |    850,000 |
-| Materials   |          62 |          15 |         15 |
-| Bytes       | 367,032,545 |  11,310,820 | 15,000,000 |
+| Measurement      | Source glTF | Shipped GLB |    Maximum |
+| ---------------- | ----------: | ----------: | ---------: |
+| Triangles        |   6,156,109 |     812,098 |    850,000 |
+| Materials        |          62 |          15 |         15 |
+| Bytes (unzipped) | 367,032,545 |   8,761,768 | 15,000,000 |
+| Bytes (gzipped)  |             |   5,453,711 |            |
 
 Source bytes include the manifest, referenced buffer and textures. Triangle counts exclude SketchUp line primitives. Reproduce with `pnpm process:stadium`; add `VERBOSE=1` for a per-material reduction table. The processor checks all three budgets before replacing the derivative (`MAX_TRIANGLES` overrides the triangle limit for experiments only).
 
 Per surface: concrete 221k, charcoal 179k, truss 136k, steel 98k, leather 60k, roof 54k, wood 27k, everything else under 20k each.
+
+## Packing
+
+The last stage repairs zero normals (simplification leaves them on zero-area faces; they shade as NaN and Bloom spreads that into black frames), prunes unused images, applies meshopt at level `high` (filters: octahedral normals, exponential UVs) and gzips the GLB. Meshopt output is meant to be followed by a general-purpose compressor, and static hosts don't reliably gzip `model/gltf-binary`, so the app inflates it itself (`src/scene/shellLoader.ts`, which also accepts an already-decoded response). The file name carries a content hash so `_headers` can cache it for a year; `venue.json` records the current name.
+
+2026-11-24: moving from meshopt `medium` to `high` plus gzip took the download from 11,310,820 to 5,453,711 bytes (−52%). That change was made with `--repack` on the previous derivative, so normals went from 16-bit to 8-bit octahedral without a fresh pass from source. The repack also repaired 903 zero normals that the app used to fix on every load.
 
 ## Geometry and scale
 
@@ -57,7 +64,7 @@ These positions reference the lower bank of hospitality seats. The upper seats r
 
 ## Inspection
 
-`/?debug=shell` loads the shipped GLB.
+`/?debug=shell` loads the shipped shell (the file `venue.json` names).
 
 - **Night look-dev** (on by default): ACES tone mapping, a dim environment, two shadow-casting floodlight keys and a striped pitch. Judge assets with this on. The neutral daylight view is only for checking geometry.
 - **Fade roof from above** (on by default): previews the overview roof fade.

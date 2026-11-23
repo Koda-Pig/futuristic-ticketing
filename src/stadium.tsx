@@ -151,6 +151,9 @@ function Stadium({
   // Never restored from the URL: a confirmation must follow a real checkout.
   const [done, setDone] = useState(false);
   const [vipSnapshot, setVipSnapshot] = useState("");
+  // Snapshots are blob: URLs (SeatPreview); free each one once it's replaced.
+  useEffect(() => () => URL.revokeObjectURL(snapshot), [snapshot]);
+  useEffect(() => () => URL.revokeObjectURL(vipSnapshot), [vipSnapshot]);
   const box = vip ? venue.vipBoxes.find((b) => b.id === vip.boxId) : undefined;
   const boxAvailable = box ? vipAvailable[box.id] : [];
   const view = useMemo(

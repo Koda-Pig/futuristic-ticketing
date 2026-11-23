@@ -55,13 +55,19 @@ GitHub Actions runs lint, format, unit tests, the build and the e2e suite on eve
 
 ## Process the stadium model
 
-The shell (`public/venues/cape-point/shell.glb`) is committed. Rebuilding it needs the licensed source, which is not in git: place the glTF, its buffer and textures in `assets/modern_stadium/`, then run:
+The shell is committed as a gzipped, content-hashed GLB (`public/venues/cape-point/shell.<hash>.glb.gz`); the script writes the new name into `venue.json` and deletes the old file. Rebuilding it needs the licensed source, which is not in git: place the glTF, its buffer and textures in `assets/modern_stadium/`, then run:
 
 ```bash
 pnpm process:stadium
 ```
 
-`VERBOSE=1` prints per-material reductions. The script fails if the result is over budget (≤ 15 MB, ≤ 850k triangles). Material rules live in `scripts/stadium-materials.json`; `/?debug=materials` shows each material's triangle count and lets you toggle or isolate it.
+To change only the final packing stage (compression, hashing, checks) without the source, re-encode the shipped shell:
+
+```bash
+pnpm process:stadium --repack
+```
+
+`VERBOSE=1` prints per-material reductions. The script fails if the result is over budget (≤ 15 MB unzipped, ≤ 850k triangles) or still has zero normals. Material rules live in `scripts/stadium-materials.json`; `/?debug=materials` shows each material's triangle count and lets you toggle or isolate it.
 
 ## Add a venue
 

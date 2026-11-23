@@ -1,38 +1,21 @@
-import { useGLTF } from "@react-three/drei";
-import { useFrame, useThree } from "@react-three/fiber";
-import { useEffect, useLayoutEffect, useMemo } from "react";
+import { useFrame, useLoader, useThree } from "@react-three/fiber";
+import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import {
-  type BufferGeometry,
   type Material,
   type Mesh,
   MathUtils,
   Plane,
   Vector3,
+  WebGLRenderTarget,
 } from "three";
 
+import { useQuality } from "../quality";
 import type { VenueConfig } from "../venue/schema";
+import { ShellLoader } from "./shellLoader";
 
 // Shell surfaces that hide the seating bowl from above (docs/PLAN.md §9).
 const ROOF_SURFACES = new Set(["roof", "membrane", "glass", "truss"]);
 const ROOF_FADE = { low: 35, high: 90, minOpacity: 0.12 };
-
-/**
- * Simplification leaves zero-area triangles whose rebuilt normals are (0,0,0).
- * normalize() turns those into NaN pixels, which Bloom's blur spreads into a
- * fully black frame, so the view flickers while the camera moves. A zero normal
- * only belongs to a zero-area face, so any unit vector is safe there.
- */
-function repairNormals(geometry: BufferGeometry) {
-  const normal = geometry.getAttribute("normal");
-  if (!normal) return;
-  let repaired = false;
-  for (let i = 0; i < normal.count; i++)
-    if (!normal.getX(i) && !normal.getY(i) && !normal.getZ(i)) {
-      normal.setXYZ(i, 0, 1, 0);
-      repaired = true;
-    }
-  if (repaired) normal.needsUpdate = true;
-}
 
 type Box = Pick<
   NonNullable<Props["opening"]>,
@@ -74,7 +57,9 @@ type Props = {
 };
 
 export function Shell({ shell, opening, opacity = 1, roofFade = true }: Props) {
-  const { scene } = useGLTF(shell.gltfUrl);
+  // Zero normals from simplification are repaired by the processor
+  // (scripts/process-stadium.mjs), which refuses to ship a GLB with any.
+  const { scene } = useLoader(ShellLoader, shell.gltfUrl);
   // Each Shell gets its own materials, since opacity is set per instance.
   const { model, materials } = useMemo(() => {
     const model = scene.clone(true);
@@ -82,7 +67,6 @@ export function Shell({ shell, opening, opacity = 1, roofFade = true }: Props) {
     model.traverse((object) => {
       const mesh = object as Mesh;
       if (!mesh.isMesh) return;
-      repairNormals(mesh.geometry);
       const source = mesh.material as Material;
       if (!copies.has(source)) {
         const copy = source.clone();
@@ -136,6 +120,35 @@ export function Shell({ shell, opening, opacity = 1, roofFade = true }: Props) {
     invalidate();
   }, [planes, opening, invalidate]);
 
+  // Compile the shell's shaders before it joins the scene, so its 15 lit,
+  // shadowed, clipped materials don't stall one frame on arrival. Programs
+  // depend on the target: post-processing renders the scene into a linear,
+  // un-tone-mapped buffer, so compile for that whenever it's on.
+  const camera = useThree((state) => state.camera);
+  const root = useThree((state) => state.scene);
+  const postprocessing = useQuality((q) => q.level > 0);
+  const [compiled, setCompiled] = useState<typeof model | null>(null);
+  useEffect(() => {
+    let live = true;
+    const target = postprocessing ? new WebGLRenderTarget(1, 1) : null;
+    const previous = gl.getRenderTarget();
+    gl.setRenderTarget(target);
+    // compileAsync reads the render target synchronously, then polls.
+    const done = gl.compileAsync(model, camera, root);
+    gl.setRenderTarget(previous);
+    target?.dispose();
+    done
+      .catch(() => {}) // Drawing compiles anything left over.
+      .then(() => {
+        if (live) setCompiled(model);
+      });
+    return () => {
+      live = false;
+    };
+    // Only for the first appearance: later quality changes recompile anyway.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gl, model, camera, root]);
+
   const setOpacity = (roof: number) => {
     for (const material of materials) {
       const value =
@@ -164,6 +177,7 @@ export function Shell({ shell, opening, opacity = 1, roofFade = true }: Props) {
     setOpacity(MathUtils.lerp(1, ROOF_FADE.minOpacity, t));
   });
 
+  if (compiled !== model) return null;
   return (
     <primitive
       object={model}

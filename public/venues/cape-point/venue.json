@@ -266,7 +266,7 @@
     }
   ],
   "shell": {
-    "gltfUrl": "/venues/cape-point/shell.glb",
+    "gltfUrl": "/venues/cape-point/shell.a247ce47d4.glb.gz",
     "credit": "Stadium model: “Modern Stadium” by Razny (Sketchfab), Sketchfab Standard licence"
   },
   "cameras": {

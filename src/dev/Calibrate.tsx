@@ -2,13 +2,12 @@
 import { useThree } from "@react-three/fiber";
 import { button, folder, Leva, useControls } from "leva";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { z } from "zod";
 
 import { Bowl } from "../scene/Bowl";
 import { Shell } from "../scene/Shell";
 import { Stage } from "../scene/Stage";
 import { generateBowl, rowsFor } from "../venue/generateBowl";
-import { type VenueConfig, venueSchema } from "../venue/schema";
+import { readableError, type VenueConfig, venueSchema } from "../venue/schema";
 
 type Pose = {
   position: [number, number, number];
@@ -294,7 +293,7 @@ export function Calibrate({ initial }: { initial: VenueConfig }) {
                 ([tier, seats]) => `${tier}: ${seats.toLocaleString()}`,
               ),
             ].join("\n")
-          : z.prettifyError(parsed.error!)}
+          : readableError(parsed.error)}
       </output>
     </main>
   );

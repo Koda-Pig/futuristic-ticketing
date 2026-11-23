@@ -43,6 +43,7 @@ export function SeatPreview({
 }) {
   const { gl, scene } = useThree();
   useEffect(() => {
+    let live = true;
     const timer = setTimeout(
       () => {
         const el = snapshot ? document.createElement("canvas") : canvas.current;
@@ -78,11 +79,23 @@ export function SeatPreview({
           );
         ctx.putImageData(frame, 0, 0);
         el.dataset.seat = seat.id;
-        if (snapshot) snapshot(el.toDataURL());
+        // toBlob encodes off the main thread (toDataURL's PNG blocked it).
+        // Stadium revokes each URL once it's replaced.
+        if (snapshot)
+          el.toBlob(
+            (blob) => {
+              if (blob && live) snapshot(URL.createObjectURL(blob));
+            },
+            "image/jpeg",
+            0.9,
+          );
       },
       snapshot ? SNAPSHOT_DELAY : HOVER_DELAY,
     );
-    return () => clearTimeout(timer);
+    return () => {
+      live = false;
+      clearTimeout(timer);
+    };
   }, [canvas, gl, scene, seat, snapshot]);
   return null;
 }

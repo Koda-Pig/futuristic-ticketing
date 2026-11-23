@@ -4,6 +4,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
+import { fetchShell } from "./scene/shellLoader";
 
 const raw = new URLSearchParams(location.search).get("debug") === "materials";
 const status = document.querySelector("#status");
@@ -223,10 +224,16 @@ async function start() {
   });
   setLighting(!raw);
   const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
-  const url = raw
-    ? "/assets/modern_stadium/scene.gltf"
-    : "/venues/cape-point/shell.glb";
-  const { scene: model } = await loader.loadAsync(url);
+  // The shipped shell is gzipped under a hashed name that venue.json records.
+  const { scene: model } = raw
+    ? await loader.loadAsync("/assets/modern_stadium/scene.gltf")
+    : await loader.parseAsync(
+        await fetchShell(
+          (await (await fetch("/venues/cape-point/venue.json")).json()).shell
+            .gltfUrl,
+        ),
+        "",
+      );
   if (raw) {
     model.scale.setScalar(0.0254);
     model.position.set(-1205 * 0.0254, 59 * 0.0254, 2063 * 0.0254);

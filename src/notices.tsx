@@ -20,7 +20,7 @@ export function NoWebGL() {
   );
 }
 
-const smallOrTouch = () =>
+export const smallOrTouch = () =>
   matchMedia("(pointer: coarse)").matches || innerWidth < 900;
 
 /** v1 is desktop-only (docs/PLAN.md §13); small or touch screens may still continue. */

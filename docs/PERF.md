@@ -35,3 +35,22 @@ Still pending:
 
 - The M1 MacBook Air and mid-range Windows laptop frame-rate checks (§13) need those machines.
 - The desktop Lighthouse run against the production Netlify URL wasn't run from this session.
+
+## Load audit (2026-11-24)
+
+| Item                      | Before                            | After                                       |
+| ------------------------- | --------------------------------- | ------------------------------------------- |
+| Shell download            | 11.31 MB (meshopt `medium`, raw)  | 5.45 MB (meshopt `high`, gzipped)           |
+| Shell caching             | fixed name, revalidated per visit | content-hashed name, `immutable` for a year |
+| Shell request starts      | after the 3D chunk mounts `Shell` | as soon as `venue.json` parses              |
+| JavaScript (gzip)         | ~482 kB                           | ~445 kB                                     |
+| Entry chunk before header | 94 kB (react-dom + zod)           | 82 kB (react chunk + zod/mini entry)        |
+| Initial transfer          | ~11.6 MB                          | ~5.9 MB                                     |
+
+- The 3D chunk is preloaded from the HTML (`modulepreload`) instead of being found only after the entry runs.
+- Three.js, R3F, drei and postprocessing get their own `three` chunk and React its own `react` chunk, so an app deploy re-downloads about 15 kB (`stadium`) instead of the whole 381 kB 3D bundle.
+- `n8ao` (~43 kB minified, imported by `@react-three/postprocessing` but never used) is aliased to a stub.
+- Meshopt decoding runs in Web Workers, the shell's shaders compile with `compileAsync` before it joins the scene, and zero normals are fixed in the processor instead of a loop over every vertex on each mount.
+- Seat snapshots are JPEG blobs from `toBlob` (encoded off the main thread) instead of `toDataURL` PNGs.
+
+Small or touch screens see the desktop notice before the shell preloads, so they still download only the JavaScript.

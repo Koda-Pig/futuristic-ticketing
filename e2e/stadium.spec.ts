@@ -294,5 +294,8 @@ test("Riverside embed restores a seat, hands off both checkout prices and resets
   expect(vip.checkoutId).not.toBe(standard.checkoutId);
   await page.getByRole("button", { name: "Reset selection" }).click();
   await expect(frame.locator(".block-panel")).toHaveCount(0);
-  expect(new URL(frame.url()).searchParams.has("seat")).toBe(false);
+  // The URL follows the reset in an effect, after the panel has gone.
+  await expect
+    .poll(() => new URL(frame.url()).searchParams.has("seat"))
+    .toBe(false);
 });

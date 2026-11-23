@@ -1,9 +1,15 @@
 import { createRoot } from "react-dom/client";
-import { z } from "zod";
-import type { VenueConfig } from "./venue/schema";
+import { readableError, type VenueConfig } from "./venue/schema";
 import { MockDataSource } from "./venue/dataSource";
 import { MatchHeader } from "./MatchHeader";
-import { ErrorBoundary, ErrorCard, NoWebGL, hasWebGL2 } from "./notices";
+import {
+  ErrorBoundary,
+  ErrorCard,
+  NoWebGL,
+  hasWebGL2,
+  smallOrTouch,
+} from "./notices";
+import { preloadShell } from "./scene/preloadShell";
 import "./overview.css";
 import { isInspectorMode } from "./inspectorMode";
 
@@ -34,6 +40,10 @@ if (import.meta.env.DEV && isInspectorMode(location.search)) {
           if (query.has("event") && query.get("event") !== venue.event.id)
             throw new Error("Unknown event");
           document.title = calibrate ? venue.name + " · Calibrate" : venue.name;
+          // The shell is most of the page's bytes: start it now rather than
+          // after the 3D chunk loads and mounts. Small or touch screens see
+          // the desktop notice first and may never load it.
+          if (venue.shell && !smallOrTouch()) preloadShell(venue.shell.gltfUrl);
           app.render(
             <main className="overview">
               <MatchHeader venue={venue} />
@@ -58,9 +68,7 @@ if (import.meta.env.DEV && isInspectorMode(location.search)) {
       app.render(
         <ErrorCard
           title="We couldn't load this venue"
-          detail={
-            error instanceof z.ZodError ? z.prettifyError(error) : String(error)
-          }
+          detail={readableError(error) ?? String(error)}
         />,
       );
     }
