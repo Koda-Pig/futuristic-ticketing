@@ -12,7 +12,7 @@ export function SeatPreview({
   snapshot,
 }: {
   snapshot?: (url: string) => void;
-  seat: Seat;
+  seat: Pick<Seat, "eye" | "id">;
   canvas: RefObject<HTMLCanvasElement | null>;
 }) {
   const { gl, scene } = useThree();

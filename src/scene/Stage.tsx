@@ -20,7 +20,9 @@ import type { Seat } from "../venue/generateBowl";
 type Props = {
   venue: VenueConfig;
   children: ReactNode;
-  seat?: Seat | null;
+  seat?: Pick<Seat, "eye"> | null;
+  entry?: Seat["eye"];
+  duration?: number;
   overview?: boolean;
   blockPose?: VenueConfig["cameras"]["overview"];
   controls?: ComponentProps<typeof OrbitControls>;
@@ -32,6 +34,8 @@ export function Stage({
   controls,
   blockPose,
   seat,
+  entry,
+  duration,
   overview = false,
 }: Props) {
   const { position, target } = venue.cameras.overview;
@@ -62,7 +66,7 @@ export function Stage({
         </>
       )}
       <Suspense fallback={null}>{children}</Suspense>
-      {seat && <SeatCamera seat={seat} />}
+      {seat && <SeatCamera seat={seat} entry={entry} duration={duration} />}
       {overview ? (
         <CameraDirector
           overview={venue.cameras.overview}

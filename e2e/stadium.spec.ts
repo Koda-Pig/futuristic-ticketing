@@ -74,7 +74,7 @@ for (const tier of ["lower", "upper"])
   test(`picks a ${tier} seat, previews its view and rejects taken seats`, async ({
     page,
   }) => {
-    test.setTimeout(120000);
+    test.setTimeout(tier === "lower" ? 180000 : 120000);
     await page.emulateMedia({ reducedMotion: "reduce" });
     await page.setViewportSize({ width: 960, height: 640 });
     await page.goto("/");
@@ -158,6 +158,34 @@ for (const tier of ["lower", "upper"])
           path: test.info().outputPath("seat-view.png"),
           contentType: "image/png",
         });
+        if (tier === "lower") {
+          const originalPrice = await ticket
+            .locator(".ticket-price strong")
+            .innerText();
+          await ticket.getByRole("button", { name: /Upgrade/ }).click();
+          const vip = page.getByRole("region", { name: "VIP ticket" });
+          await expect(vip.getByRole("img")).toHaveJSProperty(
+            "naturalWidth",
+            800,
+          );
+          await expect(
+            vip.locator("fieldset button:disabled").first(),
+          ).toBeDisabled();
+          await vip.locator("fieldset button:enabled").first().click();
+          await vip.getByRole("button", { name: "Confirm VIP" }).click();
+          await expect(page.getByText("VIP seat confirmed")).toBeVisible();
+          await page.keyboard.press("Escape");
+          await expect(vip.getByText("Confirm VIP")).toBeVisible();
+          await page.keyboard.press("Escape");
+          await expect(vip.getByText("Choose your VIP seat")).toBeVisible();
+          await vip.getByText("Back to standard seat").click();
+          await expect(ticket.locator(".ticket-price strong")).toHaveText(
+            originalPrice,
+          );
+          await expect(ticket.locator("dd").nth(1)).toHaveText(
+            String(seat.seat),
+          );
+        }
         await ticket.getByText("Choose another seat").click();
         await expect(ticket).toBeHidden();
         await expect(async () => {

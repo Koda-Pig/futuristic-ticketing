@@ -198,3 +198,34 @@
   transform: translate(50%, 50%);
   max-width: 320px;
 }
+.ticket.vip {
+  background: #17181d;
+  color: #efd8a0;
+}
+.ticket.vip fieldset {
+  border: 0;
+  padding: 0;
+  margin: 8px 0;
+}
+.ticket.vip fieldset button:disabled {
+  opacity: 0.35;
+  text-decoration: line-through;
+}
+.ticket .upgrade:enabled {
+  cursor: pointer;
+  color: #192830;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .ticket.vip:not(.confirmed),
+  .ticket.standard:not(.confirmed) {
+    animation: turn-ticket 0.45s ease-out;
+  }
+  @keyframes turn-ticket {
+    from {
+      transform: perspective(800px) rotateY(90deg);
+    }
+    to {
+      transform: perspective(800px) rotateY(0);
+    }
+  }
+}

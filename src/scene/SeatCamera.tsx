@@ -9,12 +9,23 @@ import {
 } from "three";
 import type { Seat } from "../venue/generateBowl";
 
-export function aimAtPitch(camera: PerspectiveCamera, seat: Seat) {
+export type Viewpoint = Pick<Seat, "eye"> & { target?: Seat["eye"] };
+
+export function aimAtPitch(camera: PerspectiveCamera, seat: Viewpoint) {
   camera.position.set(...seat.eye);
-  camera.lookAt(seat.eye[0] * 0.08, 0, seat.eye[2] * 0.08);
+  if (seat.target) camera.lookAt(...seat.target);
+  else camera.lookAt(seat.eye[0] * 0.08, 0, seat.eye[2] * 0.08);
 }
 
-export function SeatCamera({ seat }: { seat: Seat }) {
+export function SeatCamera({
+  seat,
+  entry,
+  duration = 1.2,
+}: {
+  seat: Viewpoint;
+  entry?: Seat["eye"];
+  duration?: number;
+}) {
   const { camera, gl } = useThree();
   const step = useRef<(delta: number) => void>(() => {});
   useLayoutEffect(() => {
@@ -34,7 +45,7 @@ export function SeatCamera({ seat }: { seat: Seat }) {
     camera.fov = 65;
     camera.updateProjectionMatrix();
     let elapsed = matchMedia("(prefers-reduced-motion: reduce)").matches
-      ? 1.2
+      ? 3
       : 0;
     let yaw = 0,
       pitch = 0;
@@ -57,10 +68,23 @@ export function SeatCamera({ seat }: { seat: Seat }) {
     element.addEventListener("pointerdown", down);
     element.addEventListener("pointermove", move);
     element.addEventListener("lostpointercapture", end);
+    const outside = entry && new Vector3(...entry);
     step.current = (delta) => {
       elapsed += delta;
-      const t = MathUtils.smoothstep(elapsed, 0, 1.2);
-      camera.position.lerpVectors(start, eye, t);
+      const t = MathUtils.smoothstep(
+        elapsed,
+        entry ? 1.3 : 0,
+        entry ? 2 : duration,
+      );
+      if (outside && elapsed < 1.3) {
+        const u = MathUtils.smoothstep(elapsed, 0, 0.9);
+        camera.position.lerpVectors(start, outside, u);
+        camera.position.y += 12 * Math.sin(Math.PI * u);
+        camera.lookAt(eye);
+        rotation.copy(camera.quaternion);
+        return;
+      }
+      camera.position.lerpVectors(outside || start, eye, t);
       look.setFromEuler(
         angles.set(
           base.x + MathUtils.degToRad(pitch),
@@ -78,7 +102,7 @@ export function SeatCamera({ seat }: { seat: Seat }) {
       camera.fov = fov;
       camera.updateProjectionMatrix();
     };
-  }, [camera, gl, seat]);
+  }, [camera, gl, seat, entry, duration]);
   useFrame((_, delta) => step.current(delta));
   return null;
 }

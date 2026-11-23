@@ -6,6 +6,8 @@ import {
   type Material,
   type Mesh,
   MathUtils,
+  Plane,
+  Vector3,
 } from "three";
 
 import type { VenueConfig } from "../venue/schema";
@@ -33,6 +35,7 @@ function repairNormals(geometry: BufferGeometry) {
 }
 
 type Props = {
+  opening?: VenueConfig["vipBoxes"][number];
   shell: NonNullable<VenueConfig["shell"]>;
   /** Overall opacity, e.g. 0.5 while calibrating. */
   opacity?: number;
@@ -40,7 +43,7 @@ type Props = {
   roofFade?: boolean;
 };
 
-export function Shell({ shell, opacity = 1, roofFade = true }: Props) {
+export function Shell({ shell, opening, opacity = 1, roofFade = true }: Props) {
   const { scene } = useGLTF(shell.gltfUrl);
   // Each Shell gets its own materials, since opacity is set per instance.
   const { model, materials } = useMemo(() => {
@@ -63,6 +66,44 @@ export function Shell({ shell, opacity = 1, roofFade = true }: Props) {
     });
     return { model, materials: [...copies.values()] };
   }, [scene]);
+
+  const gl = useThree((state) => state.gl);
+  useLayoutEffect(() => {
+    if (!opening) return;
+    const center = new Vector3(...opening.position);
+    center.y += opening.size[1] / 2;
+    const planes = [
+      [1, 0, 0],
+      [0, 1, 0],
+      [0, 0, 1],
+    ].flatMap((axis, i) =>
+      [-1, 1].map((sign) => {
+        const normal = new Vector3()
+          .fromArray(axis)
+          .applyAxisAngle(new Vector3(0, 1, 0), opening.rotationY)
+          .multiplyScalar(sign);
+        return new Plane().setFromNormalAndCoplanarPoint(
+          normal,
+          center.clone().addScaledVector(normal, opening.size[i] / 2 + 0.2),
+        );
+      }),
+    );
+    const previous = gl.localClippingEnabled;
+    gl.localClippingEnabled = true;
+    for (const material of materials) {
+      material.clippingPlanes = planes;
+      material.clipIntersection = true;
+      material.needsUpdate = true;
+    }
+    return () => {
+      gl.localClippingEnabled = previous;
+      for (const material of materials) {
+        material.clippingPlanes = null;
+        material.clipIntersection = false;
+        material.needsUpdate = true;
+      }
+    };
+  }, [gl, materials, opening]);
 
   const setOpacity = (roof: number) => {
     for (const material of materials) {

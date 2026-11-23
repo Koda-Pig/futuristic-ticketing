@@ -2,6 +2,7 @@ import { createRoot } from "react-dom/client";
 import { useEffect, useMemo, useRef, useState, Suspense } from "react";
 import { z } from "zod";
 
+import { Skybox, vipView, worldPoint } from "./scene/Skybox";
 import { Crowd } from "./scene/Crowd";
 import { TicketCard } from "./TicketCard";
 import { BlockSeats } from "./scene/BlockSeats";
@@ -71,6 +72,29 @@ function Stadium({ venue }: { venue: VenueConfig }) {
   const [selected, setSelected] = useState<Seat | null>(null);
   const [snapshot, setSnapshot] = useState("");
   const [done, setDone] = useState(false);
+  // `enter` is set only on the upgrade, so going back to the picker from a
+  // chosen VIP seat doesn't replay the fly-in from outside the box.
+  const [vip, setVip] = useState<{
+    index: number | null;
+    enter?: boolean;
+  } | null>(null);
+  const [vipSnapshot, setVipSnapshot] = useState("");
+  const box = venue.vipBoxes[0];
+  const view = useMemo(
+    () => (vip && box ? vipView(box, vip.index) : null),
+    [vip, box],
+  );
+  const entry = useMemo(
+    () =>
+      vip?.enter && box
+        ? worldPoint(box, [0, 2, box.size[2] / 2 + 5])
+        : undefined,
+    [vip, box],
+  );
+  function changeVip(next: typeof vip) {
+    setVipSnapshot("");
+    setVip(next);
+  }
   const [rejections, reject] = useState(0);
   const preview = useRef<HTMLCanvasElement>(null);
   const sold = useMemo(
@@ -103,6 +127,7 @@ function Stadium({ venue }: { venue: VenueConfig }) {
   );
   function back() {
     if (done) setDone(false);
+    else if (vip) changeVip(vip.index === null ? null : { index: null });
     else if (selected) {
       setSelected(null);
       setSnapshot("");
@@ -116,7 +141,7 @@ function Stadium({ venue }: { venue: VenueConfig }) {
     };
     window.addEventListener("keydown", escape);
     return () => window.removeEventListener("keydown", escape);
-  }, [selected, done]);
+  }, [selected, done, vip]);
   const shown = selected ?? seat;
   const tag = useRef<HTMLOutputElement>(null);
   const active = groups.find((group) => group.stand.id === hover);
@@ -138,11 +163,18 @@ function Stadium({ venue }: { venue: VenueConfig }) {
         }
       }}
     >
-      <Stage venue={venue} overview seat={selected} blockPose={block?.flyIn}>
+      <Stage
+        venue={venue}
+        overview
+        seat={view ?? selected}
+        entry={entry}
+        duration={view ? 0.8 : undefined}
+        blockPose={block?.flyIn}
+      >
         <MatchNight venue={venue} />
         {venue.shell && (
           <Suspense fallback={null}>
-            <Shell shell={venue.shell} />
+            <Shell opening={vip ? box : undefined} shell={venue.shell} />
           </Suspense>
         )}
         {nearby.map((b) => (
@@ -170,11 +202,21 @@ function Stadium({ venue }: { venue: VenueConfig }) {
             accent={venue.branding.accent}
           />
         )}
+        {vip && box && (
+          <Skybox
+            box={box}
+            seed={venue.availability.seed}
+            index={vip.index}
+            pick={(index) => changeVip({ index })}
+          />
+        )}
         {shown && (
           <SeatPreview
-            seat={shown}
+            seat={view ?? shown}
             canvas={preview}
-            snapshot={selected ? setSnapshot : undefined}
+            snapshot={
+              view ? setVipSnapshot : selected ? setSnapshot : undefined
+            }
           />
         )}
         <Bowl bowl={farBowl} accent={venue.branding.accent} />
@@ -236,10 +278,15 @@ function Stadium({ venue }: { venue: VenueConfig }) {
         <TicketCard
           venue={venue}
           seat={selected}
-          snapshot={snapshot}
+          snapshot={vip ? vipSnapshot : snapshot}
+          vip={vip}
+          upgrade={() => changeVip({ index: null, enter: true })}
+          standard={() => changeVip(null)}
+          pick={(index) => changeVip({ index })}
           done={done}
           keep={() => setDone(true)}
           choose={() => {
+            changeVip(null);
             setDone(false);
             setSelected(null);
             setSeat(null);

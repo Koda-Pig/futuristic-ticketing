@@ -1,3 +1,4 @@
+import { vipSold } from "./scene/Skybox";
 import type { Seat } from "./venue/generateBowl";
 import { money } from "./venue/format";
 import type { VenueConfig } from "./venue/schema";
@@ -9,6 +10,10 @@ export function TicketCard({
   done,
   keep,
   choose,
+  vip,
+  upgrade,
+  standard,
+  pick,
 }: {
   venue: VenueConfig;
   seat: Seat;
@@ -16,6 +21,10 @@ export function TicketCard({
   done: boolean;
   keep: () => void;
   choose: () => void;
+  vip: { index: number | null } | null;
+  upgrade: () => void;
+  standard: () => void;
+  pick: (index: number) => void;
 }) {
   const standIndex = venue.stands.findIndex((s) => s.id === seat.standId);
   const tier = venue.tiers.find((t) => t.id === seat.tierId)!;
@@ -23,9 +32,62 @@ export function TicketCard({
   const bars = Array.from(seat.id, (c) =>
     c.charCodeAt(0).toString(2).padStart(8, "0"),
   ).join("");
+  const box = venue.vipBoxes[0];
+  if (vip && box)
+    return (
+      <section
+        key="vip"
+        className={"ticket vip" + (done ? " confirmed" : "")}
+        aria-label={done ? "VIP confirmation" : "VIP ticket"}
+      >
+        {!done && (
+          <figure>
+            {snapshot && <img src={snapshot} alt="Pitch from the skybox" />}
+            <figcaption>View from the box</figcaption>
+          </figure>
+        )}
+        <div className="ticket-details">
+          <span>VIP · Level {box.level}</span>
+          <h2>{done ? "VIP seat confirmed" : box.label}</h2>
+          <p>
+            {done && box.label + " · "}
+            {vip.index === null
+              ? box.seats + " seats"
+              : "Seat " + (vip.index + 1)}{" "}
+            · Entry VIP
+          </p>
+          <strong>{money(venue, venue.pricing.vip.pricePerSeat)}</strong>
+          {!done &&
+            (vip.index === null ? (
+              <fieldset>
+                <legend>Choose your VIP seat</legend>
+                {Array.from({ length: box.seats }, (_, i) => (
+                  <button
+                    key={i}
+                    disabled={vipSold(box, venue.availability.seed, i)}
+                    aria-label={"VIP seat " + (i + 1)}
+                    onClick={() => pick(i)}
+                  >
+                    {i + 1}
+                  </button>
+                ))}
+              </fieldset>
+            ) : (
+              <button className="upgrade" onClick={keep}>
+                Confirm VIP
+              </button>
+            ))}
+          {done && <p>Demo: checkout hands off to your ticketing provider.</p>}
+          <button onClick={done ? choose : standard}>
+            {done ? "Choose another seat" : "Back to standard seat"}
+          </button>
+        </div>
+      </section>
+    );
   return (
     <section
-      className={"ticket" + (done ? " confirmed" : "")}
+      key="standard"
+      className={"ticket standard" + (done ? " confirmed" : "")}
       aria-label={done ? "Seat confirmation" : "Ticket"}
     >
       {!done && (
@@ -77,7 +139,7 @@ export function TicketCard({
           <p>Demo: checkout hands off to your ticketing provider.</p>
         ) : (
           <>
-            <button className="upgrade" disabled>
+            <button className="upgrade" disabled={!box} onClick={upgrade}>
               Upgrade · +{money(venue, venue.pricing.vip.pricePerSeat - price)}
             </button>
             <button onClick={keep}>Keep my seat</button>
