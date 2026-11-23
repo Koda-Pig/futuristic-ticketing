@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Cape Point Stadium · Model inspector</title>
+  </head>
+  <body>
+    <main>
+      <canvas aria-label="Interactive stadium model"></canvas>
+      <section>
+        <h1>Cape Point Stadium</h1>
+        <nav aria-label="Inspector mode">
+          <a href="?debug=shell">Shell</a>
+          <a id="raw" href="?debug=materials">Source materials</a>
+        </nav>
+        <p id="status" role="status">Loading stadium…</p>
+        <div id="bookmarks" aria-label="Camera bookmarks"></div>
+        <div id="materials"></div>
+      </section>
+      <footer>
+        Stadium model: “Modern Stadium” by
+        <a href="https://sketchfab.com/razniak1910">Razny</a> (Sketchfab),
+        Sketchfab Standard licence
+      </footer>
+    </main>
+    <script type="module" src="/src/inspector.js"></script>
+  </body>
+</html>

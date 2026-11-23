@@ -1,0 +1,245 @@
+{
+  "Srebro_03__wytarte": {
+    "action": "decimate",
+    "ratio": 0.095,
+    "surface": "steel"
+  },
+  "Beton_16": {
+    "action": "decimate",
+    "ratio": 0.13,
+    "surface": "concrete"
+  },
+  "Color_M07": {
+    "action": "decimate",
+    "ratio": 0.019,
+    "surface": "charcoal"
+  },
+  "material": {
+    "action": "decimate",
+    "ratio": 0.18,
+    "surface": "concrete"
+  },
+  "Aluminium_01__nierdzewne_9": {
+    "action": "keep",
+    "surface": "steel"
+  },
+  "Kostka_17": {
+    "action": "keep",
+    "surface": "paving"
+  },
+  "Aluminium_01__nierdzewne": {
+    "action": "decimate",
+    "ratio": 0.095,
+    "surface": "steel"
+  },
+  "Stal_02__szorstka_1_2": {
+    "action": "keep",
+    "surface": "steel"
+  },
+  "Stal_02__szorstka_1_0": {
+    "action": "decimate",
+    "ratio": 0.095,
+    "surface": "steel"
+  },
+  "Stal_02__szorstka": {
+    "action": "keep",
+    "surface": "steel"
+  },
+  "Stal_02__szorstka_1": {
+    "action": "decimate",
+    "ratio": 0.019,
+    "surface": "steel"
+  },
+  "Color_H01": {
+    "action": "decimate",
+    "ratio": 0.095,
+    "surface": "charcoal"
+  },
+  "Color_M07_1": {
+    "action": "keep",
+    "surface": "steel"
+  },
+  "Beton_16_3": {
+    "action": "decimate",
+    "ratio": 0.13,
+    "surface": "concrete"
+  },
+  "Color_I08": {
+    "action": "decimate",
+    "ratio": 0.18,
+    "surface": "ochre"
+  },
+  "Color_C04": {
+    "action": "decimate",
+    "ratio": 0.18,
+    "surface": "ochre"
+  },
+  "Color_D08": {
+    "action": "decimate",
+    "ratio": 0.095,
+    "surface": "steel"
+  },
+  "Tworzywo_sztuczne_01": {
+    "action": "drop"
+  },
+  "Stal_04__szczotkowana": {
+    "action": "drop"
+  },
+  "edge_color119119119255": {
+    "action": "drop"
+  },
+  "edge_color127127127255": {
+    "action": "drop"
+  },
+  "edge_color255255255255": {
+    "action": "drop"
+  },
+  "Color_M00": {
+    "action": "decimate",
+    "ratio": 0.18,
+    "surface": "white"
+  },
+  "Srebro_03__wytarte_4": {
+    "action": "decimate",
+    "ratio": 0.095,
+    "surface": "steel"
+  },
+  "edge_color100100100255": {
+    "action": "drop"
+  },
+  "Color_M02": {
+    "action": "keep",
+    "surface": "white"
+  },
+  "auto_397": {
+    "action": "keep",
+    "surface": "display"
+  },
+  "edge_color151515255": {
+    "action": "drop"
+  },
+  "Color_I02": {
+    "action": "decimate",
+    "ratio": 0.095,
+    "surface": "steel"
+  },
+  "Color_K02": {
+    "action": "decimate",
+    "ratio": 0.095,
+    "surface": "steel"
+  },
+  "Color_M08": {
+    "action": "keep",
+    "surface": "charcoal"
+  },
+  "Translucent_Glass_Gray": {
+    "action": "decimate",
+    "ratio": 0.18,
+    "surface": "glass"
+  },
+  "Color_M09": {
+    "action": "keep",
+    "surface": "charcoal"
+  },
+  "edge_color909090255": {
+    "action": "drop"
+  },
+  "Wood_47_1": {
+    "action": "keep",
+    "surface": "wood"
+  },
+  "Stal_03__wytarta": {
+    "action": "decimate",
+    "ratio": 0.095,
+    "surface": "steel"
+  },
+  "edge_color000255": {
+    "action": "drop"
+  },
+  "Stal_04__szczotkowana_5": {
+    "action": "keep",
+    "surface": "steel"
+  },
+  "Color_M08_1": {
+    "action": "decimate",
+    "ratio": 0.095,
+    "surface": "charcoal"
+  },
+  "Skra_07": {
+    "action": "decimate",
+    "ratio": 0.08,
+    "surface": "leather"
+  },
+  "Wood_47_1_6": {
+    "action": "decimate",
+    "ratio": 0.18,
+    "surface": "wood"
+  },
+  "Color_B01": {
+    "action": "keep",
+    "surface": "screen"
+  },
+  "auto_397_7": {
+    "action": "keep",
+    "surface": "displayBack"
+  },
+  "auto_25": {
+    "action": "drop"
+  },
+  "auto_15": {
+    "action": "drop"
+  },
+  "auto_1": {
+    "action": "drop"
+  },
+  "auto_26": {
+    "action": "drop"
+  },
+  "auto_27": {
+    "action": "drop"
+  },
+  "auto_30": {
+    "action": "drop"
+  },
+  "Trawa_03_1": {
+    "action": "drop"
+  },
+  "auto_37": {
+    "action": "drop"
+  },
+  "auto_36": {
+    "action": "drop"
+  },
+  "auto_38": {
+    "action": "drop"
+  },
+  "auto_39": {
+    "action": "drop"
+  },
+  "Skra_07_8": {
+    "action": "drop"
+  },
+  "Tkanina_02__pikowana": {
+    "action": "drop"
+  },
+  "auto_413": {
+    "action": "drop"
+  },
+  "auto_409": {
+    "action": "drop"
+  },
+  "Szko_mleczne_07_1": {
+    "action": "drop"
+  },
+  "auto_416": {
+    "action": "drop"
+  },
+  "Color_D04": {
+    "action": "keep",
+    "surface": "roof"
+  },
+  "Color_A06": {
+    "action": "keep",
+    "surface": "membrane"
+  }
+}
