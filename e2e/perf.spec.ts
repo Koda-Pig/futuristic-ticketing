@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
 
+import { budget } from "./timeouts";
+
 import { soldSeats } from "../src/venue/availability";
 import { generateBowl } from "../src/venue/generateBowl";
 import { venueSchema } from "../src/venue/schema";
@@ -11,7 +13,7 @@ test.use({ viewport: { width: 1707, height: 960 }, deviceScaleFactor: 1.5 });
 
 for (const venueId of ["cape-point", "riverside"])
   test(`perf: ${venueId}`, async ({ page }) => {
-    test.setTimeout(120000);
+    test.setTimeout(budget(120000));
     const venue = venueSchema.parse(
       await (await page.request.get(`/venues/${venueId}/venue.json`)).json(),
     );

@@ -1,7 +1,10 @@
 import { expect, test } from "@playwright/test";
+
+import { lastEvent } from "./events";
+import { budget } from "./timeouts";
 import { PerspectiveCamera, Vector3 } from "three";
 
-import { seatPayload } from "../src/embed/bridge";
+import { seatPayload, vipSeatId } from "../src/embed/bridge";
 import { soldSeats } from "../src/venue/availability";
 import { generateBowl } from "../src/venue/generateBowl";
 import { venueSchema } from "../src/venue/schema";
@@ -13,7 +16,7 @@ test("smoke: the scripted demo runs from overview to VIP checkout", async ({
   baseURL,
   channel,
 }) => {
-  test.setTimeout(150000);
+  test.setTimeout(budget(150000));
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.setViewportSize({ width: 1280, height: 860 });
   const host = "http://localhost:5173/embed-test.html";
@@ -128,22 +131,34 @@ test("smoke: the scripted demo runs from overview to VIP checkout", async ({
   const vip = frame.getByRole("region", { name: "VIP ticket" });
   await expect(vip.getByRole("img")).toHaveJSProperty("naturalWidth", 800);
   lap("vip card");
-  const chair = vip.locator("fieldset button:enabled").first();
+  const chair = vip
+    .getByRole("group", { name: "Choose your VIP seat" })
+    .locator("button:enabled")
+    .first();
   const index = Number(await chair.textContent()) - 1;
+  // The upgrade opens the free box nearest the seat; it is the pressed one.
+  const boxLabel = await vip
+    .getByRole("group", { name: "Box" })
+    .getByRole("button", { pressed: true })
+    .textContent();
+  const skybox = venue.vipBoxes.find((b) => b.label === boxLabel)!;
   await chair.click();
   lap("chair");
   await vip.getByRole("button", { name: "Confirm VIP" }).click();
   lap("confirm click");
-  await expect(events).toContainText(
-    "checkout " +
-      JSON.stringify({
-        ...payload,
-        vip: true,
-        boxId: venue.vipBoxes[0].id,
-        vipSeatIndex: index,
-        price: venue.pricing.vip.pricePerSeat,
-      }),
-  );
+  // A VIP checkout carries the VIP seat only, never the standard seat's fields.
+  const { checkoutId, ...checkout } = await lastEvent(events, "checkout");
+  expect(checkoutId).toEqual(expect.any(String));
+  expect(checkout).toEqual({
+    venueId: venue.id,
+    eventId: venue.event.id,
+    seatId: vipSeatId(skybox.id, index),
+    vip: true,
+    boxId: skybox.id,
+    vipSeatIndex: index,
+    price: venue.pricing.vip.pricePerSeat,
+    currency: venue.currency,
+  });
   lap("vip checkout");
   await expect(frame.getByText("VIP seat confirmed")).toBeVisible();
   // SwiftShader (the headless default and CI) renders each snapshot slowly;

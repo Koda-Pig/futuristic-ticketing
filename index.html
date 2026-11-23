@@ -11,30 +11,79 @@
         background: #10151c;
         color: #e8edf5;
       }
+      /* Kept after the app mounts: its own loading screen reuses .spinner. */
+      .boot {
+        position: fixed;
+        inset: 0;
+        display: grid;
+        place-content: center;
+        justify-items: center;
+        gap: 16px;
+        padding: 24px;
+        text-align: center;
+        font:
+          13px system-ui,
+          sans-serif;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: #c5d2d6;
+      }
+      .boot small {
+        max-width: 34ch;
+        font-size: 12px;
+        letter-spacing: 0.02em;
+        text-transform: none;
+        color: #93a3a9;
+      }
+      .spinner {
+        width: 28px;
+        height: 28px;
+        box-sizing: border-box;
+        border-radius: 50%;
+        border: 3px solid #ffffff24;
+        border-top-color: var(--accent, #ffa650);
+        animation: spin 0.9s linear infinite;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      @keyframes pulse {
+        50% {
+          opacity: 0.3;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .spinner {
+          animation: pulse 1.6s ease-in-out infinite;
+        }
+      }
     </style>
   </head>
   <body>
     <!-- Replaced when the app mounts; shows while the JS bundle downloads. -->
     <div id="root">
-      <div
-        role="status"
-        style="
-          position: fixed;
-          inset: 0;
-          display: grid;
-          place-content: center;
-          gap: 14px;
-          font:
-            13px system-ui,
-            sans-serif;
-          letter-spacing: 0.12em;
-          text-transform: uppercase;
-          color: #c5d2d6;
-        "
-      >
+      <div class="boot" id="boot" role="status">
+        <span class="spinner" aria-hidden="true"></span>
         Loading stadium…
       </div>
     </div>
+    <noscript>
+      <p class="boot">This seat picker needs JavaScript.</p>
+    </noscript>
+    <script>
+      // If the app hasn't replaced this screen after a while, say so rather
+      // than spinning forever (a slow connection, or a script that failed).
+      setTimeout(() => {
+        const boot = document.getElementById("boot");
+        if (!boot) return;
+        const hint = document.createElement("small");
+        hint.textContent =
+          "This is taking longer than usual. Check your connection, or reload the page.";
+        boot.append(hint);
+      }, 15000);
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

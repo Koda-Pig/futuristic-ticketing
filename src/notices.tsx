@@ -8,8 +8,9 @@ export function Loading({ ready, name }: { ready: boolean; name: string }) {
   if (!ready)
     return (
       <div className="loading" role="status">
+        <span className="spinner" aria-hidden="true" />
         <strong>{name}</strong>
-        <progress aria-label="Loading the stadium" />
+        <span>Preparing the 3D view…</span>
       </div>
     );
   if (!active || percent >= 100) return null;

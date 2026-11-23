@@ -1,14 +1,21 @@
 import { createRoot } from "react-dom/client";
-import { useEffect, useMemo, useRef, useState, Suspense } from "react";
+import {
+  useEffect,
+  useEffectEvent,
+  useMemo,
+  useRef,
+  useState,
+  Suspense,
+} from "react";
 import { z } from "zod";
 
-import { Skybox, vipView, worldPoint } from "./scene/Skybox";
+import { Skybox, SkyboxLights, vipView, worldPoint } from "./scene/Skybox";
 import { Crowd } from "./scene/Crowd";
 import { TicketCard } from "./TicketCard";
 import { BlockSeats } from "./scene/BlockSeats";
 import { SeatPreview } from "./scene/SeatPreview";
 import { MockDataSource } from "./venue/dataSource";
-import { embedBridge, seatPayload } from "./embed/bridge";
+import { checkoutPayload, embedBridge, seatPayload } from "./embed/bridge";
 import { ProceduralShell } from "./scene/ProceduralShell";
 import type { Block, Seat } from "./venue/generateBowl";
 import { Stand } from "./scene/Stand";
@@ -30,6 +37,15 @@ import { generateBowl } from "./venue/generateBowl";
 import { type VenueConfig } from "./venue/schema";
 
 const source = new MockDataSource();
+
+type VipState = { boxId: string; index: number | null; enter?: boolean };
+
+/** Lets the host tell repeated checkouts apart; the latest one wins. */
+const newCheckoutId = () =>
+  // randomUUID needs a secure context; plain-HTTP LAN previews fall back.
+  crypto.randomUUID?.() ??
+  Date.now().toString(36) + Math.random().toString(36).slice(2);
+
 /** Loads the venue, then renders `render(venue)` or a developer error. */
 export async function mountVenue(
   root: HTMLElement,
@@ -59,13 +75,15 @@ export const mount = (root: HTMLElement) =>
   hasWebGL2()
     ? mountVenue(root, async (venue) => {
         const bowl = generateBowl(venue);
-        const box = venue.vipBoxes[0];
-        const [availability, vipAvailable] = await Promise.all([
+        const [availability, ...boxes] = await Promise.all([
           source.getAvailability(venue.event.id, bowl),
-          box
-            ? source.getVipAvailability(venue.event.id, box.id)
-            : Promise.resolve([]),
+          ...venue.vipBoxes.map((box) =>
+            source.getVipAvailability(venue.event.id, box.id),
+          ),
         ]);
+        const vipAvailable = Object.fromEntries(
+          venue.vipBoxes.map((box, i) => [box.id, boxes[i]]),
+        );
         const sold = new Set(
           [...availability]
             .filter(([, status]) => status === "sold")
@@ -93,7 +111,8 @@ function Stadium({
   venue: VenueConfig;
   bowl: ReturnType<typeof generateBowl>;
   sold: Set<string>;
-  vipAvailable: boolean[];
+  /** Free seats per VIP box, by box ID. */
+  vipAvailable: Record<string, boolean[]>;
 }) {
   const [query] = useState(() => new URLSearchParams(location.search));
   const [ready, setReady] = useState(false);
@@ -128,27 +147,21 @@ function Stadium({
 
   // `enter` is set only on the upgrade, so going back to the picker from a
   // chosen VIP seat doesn't replay the fly-in from outside the box.
-  const [vip, setVip] = useState<{
-    index: number | null;
-    enter?: boolean;
-  } | null>(() => {
-    if (
-      !selected ||
-      !venue.vipBoxes[0] ||
-      query.get("box") !== venue.vipBoxes[0].id
-    )
-      return null;
+  const [vip, setVip] = useState<VipState | null>(() => {
+    const boxId = query.get("box");
+    if (!selected || !boxId || !vipAvailable[boxId]) return null;
     const value = query.get("vipSeat");
     const index = value && /^\d+$/.test(value) ? Number(value) : null;
-    return { index: index !== null && vipAvailable[index] ? index : null };
+    return {
+      boxId,
+      index: index !== null && vipAvailable[boxId][index] ? index : null,
+    };
   });
-  const [done, setDone] = useState(
-    !!selected &&
-      query.get("done") === "1" &&
-      (!query.has("box") || (vip !== null && vip.index !== null)),
-  );
+  // Never restored from the URL: a confirmation must follow a real checkout.
+  const [done, setDone] = useState(false);
   const [vipSnapshot, setVipSnapshot] = useState("");
-  const box = venue.vipBoxes[0];
+  const box = vip ? venue.vipBoxes.find((b) => b.id === vip.boxId) : undefined;
+  const boxAvailable = box ? vipAvailable[box.id] : [];
   const view = useMemo(
     () => (vip && box ? vipView(box, vip.index) : null),
     [vip, box],
@@ -171,16 +184,17 @@ function Stadium({
     const values = {
       block: block?.id,
       seat: selected?.id,
-      box: vip ? box?.id : undefined,
+      box: vip?.boxId,
       vipSeat: vip?.index,
-      done: done ? 1 : undefined,
+      // Older links may still carry it; drop it.
+      done: undefined,
     };
     for (const [key, value] of Object.entries(values)) {
       if (value == null) url.searchParams.delete(key);
       else url.searchParams.set(key, String(value));
     }
     history.replaceState(history.state, "", url);
-  }, [block, selected, vip, box, done]);
+  }, [block, selected, vip]);
   useEffect(() => {
     const unsubscribe = bridge?.onReset(() => {
       setBlock(null);
@@ -188,7 +202,8 @@ function Stadium({
       setSelected(null);
       setDone(false);
       setSnapshot("");
-      changeVip(null);
+      setVipSnapshot("");
+      setVip(null);
       setHover(null);
       reject(0);
     });
@@ -217,21 +232,11 @@ function Stadium({
       ]),
     ];
   }, [block, bowl]);
-  const farBowl = useMemo(
-    () =>
-      nearby.length
-        ? {
-            ...bowl,
-            seats: bowl.seats.filter(
-              (s) => !nearby.some((b) => b.id === s.blockId),
-            ),
-          }
-        : bowl,
-    [bowl, nearby],
-  );
+  const nearbyIds = useMemo(() => new Set(nearby.map((b) => b.id)), [nearby]);
   function back() {
     if (done) setDone(false);
-    else if (vip) changeVip(vip.index === null ? null : { index: null });
+    else if (vip)
+      changeVip(vip.index === null ? null : { boxId: vip.boxId, index: null });
     else if (selected) {
       setSelected(null);
       setSnapshot("");
@@ -239,13 +244,14 @@ function Stadium({
     setSeat(null);
     setHover(null);
   }
+  const onEscape = useEffectEvent(back);
   useEffect(() => {
     const escape = (e: KeyboardEvent) => {
-      if (e.key === "Escape") back();
+      if (e.key === "Escape") onEscape();
     };
     window.addEventListener("keydown", escape);
     return () => window.removeEventListener("keydown", escape);
-  }, [selected, done, vip]);
+  }, []);
   const shown = selected ?? seat;
   const tag = useRef<HTMLOutputElement>(null);
   const active = groups.find((group) => group.stand.id === hover);
@@ -254,7 +260,18 @@ function Stadium({
     .filter((b) => left.has(b.id))
     .map((b) => venue.pricing.tiers[b.tierId][b.standId]);
   const standFrom = standPrices?.length ? Math.min(...standPrices) : null;
-  const vipLeft = vipAvailable.some(Boolean);
+  const vipLeft = venue.vipBoxes.some((b) => vipAvailable[b.id].some(Boolean));
+  /** The box nearest the chosen seat that still has a free seat. */
+  function nearestBox(seat: Seat) {
+    const [x, , z] = seat.position;
+    return venue.vipBoxes
+      .filter((b) => vipAvailable[b.id].some(Boolean))
+      .sort(
+        (a, b) =>
+          Math.hypot(a.position[0] - x, a.position[2] - z) -
+          Math.hypot(b.position[0] - x, b.position[2] - z),
+      )[0];
+  }
   const phase = done
     ? "done"
     : vip
@@ -302,7 +319,7 @@ function Stadium({
         <MatchNight venue={venue} />
         {venue.shell ? (
           <Suspense fallback={null}>
-            <Shell opening={vip ? box : undefined} shell={venue.shell} />
+            <Shell opening={box} shell={venue.shell} />
           </Suspense>
         ) : (
           <ProceduralShell bowl={bowl} />
@@ -332,13 +349,18 @@ function Stadium({
             accent={venue.branding.accent}
           />
         )}
+        {venue.vipBoxes.length > 0 && (
+          // Mounted from the start so entering a box doesn't change the scene's
+          // light count, which would recompile every lit material.
+          <SkyboxLights box={box ?? venue.vipBoxes[0]} on={!!box} />
+        )}
         {vip && box && (
           <Skybox
             box={box}
-            available={vipAvailable}
+            available={boxAvailable}
             accent={venue.branding.accent}
             index={vip.index}
-            pick={(index) => changeVip({ index })}
+            pick={(index) => changeVip({ ...vip, index, enter: false })}
           />
         )}
         {shown && (
@@ -350,7 +372,7 @@ function Stadium({
             }
           />
         )}
-        <Bowl bowl={farBowl} accent={venue.branding.accent} />
+        <Bowl bowl={bowl} hidden={nearbyIds} accent={venue.branding.accent} />
         {groups.map(({ stand, blocks }) => (
           <Stand
             key={stand.id}
@@ -373,6 +395,9 @@ function Stadium({
         className="matchbar"
         style={{ borderColor: venue.branding.accent }}
       >
+        {venue.branding.logoUrl && (
+          <img className="matchbar-logo" src={venue.branding.logoUrl} alt="" />
+        )}
         <strong>{venue.name}</strong>
         <h1>
           {venue.event.home} <small>vs</small> {venue.event.away}
@@ -410,26 +435,29 @@ function Stadium({
           seat={selected}
           snapshot={vip ? vipSnapshot : snapshot}
           vip={vip}
-          upgrade={() => changeVip({ index: null, enter: true })}
+          box={box}
+          upgrade={() => {
+            const next = nearestBox(selected);
+            if (next) changeVip({ boxId: next.id, index: null, enter: true });
+          }}
+          switchBox={(boxId) => changeVip({ boxId, index: null, enter: true })}
           standard={() => changeVip(null)}
-          pick={(index) => changeVip({ index })}
+          pick={(index) => vip && changeVip({ ...vip, index, enter: false })}
           embedded={!!bridge}
           available={vipAvailable}
           vipLeft={vipLeft}
           done={done}
           keep={() => {
-            const payload = seatPayload(venue, selected);
             bridge?.send(
               "checkout",
-              vip && vip.index !== null
-                ? {
-                    ...payload,
-                    vip: true,
-                    boxId: box.id,
-                    vipSeatIndex: vip.index,
-                    price: venue.pricing.vip.pricePerSeat,
-                  }
-                : { ...payload, vip: false },
+              checkoutPayload(
+                venue,
+                selected,
+                vip && vip.index !== null
+                  ? { boxId: vip.boxId, index: vip.index }
+                  : null,
+                newCheckoutId(),
+              ),
             );
             setDone(true);
           }}

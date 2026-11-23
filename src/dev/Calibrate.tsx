@@ -250,12 +250,11 @@ export function Calibrate({ initial }: { initial: VenueConfig }) {
     () => applyValues(initial, values as unknown as Values),
     [initial, values],
   );
-  const parsed = venueSchema.safeParse(venue);
+  const parsed = useMemo(() => venueSchema.safeParse(venue), [venue]);
   latest.current = parsed.success ? parsed.data : null;
   const bowl = useMemo(
     () => (parsed.success ? generateBowl(parsed.data) : null),
-    // `venue` changes exactly when the parse result can.
-    [venue],
+    [parsed],
   );
 
   return (

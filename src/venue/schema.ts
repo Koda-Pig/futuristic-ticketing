@@ -24,7 +24,12 @@ export const venueSchema = z
       id: name,
       home: name,
       away: name,
-      startsAt: z.iso.datetime({ offset: true }),
+      // Local kick-off with the venue's own UTC offset, e.g.
+      // 2027-03-14T17:00:00+02:00. The page shows the date and time exactly as
+      // written, so "Z" (UTC) is rejected: it would show UTC, not local time.
+      startsAt: z.iso
+        .datetime({ offset: true })
+        .regex(/[+-]\d{2}:\d{2}$/, "Use the venue's UTC offset, e.g. +02:00"),
       sport,
     }),
     pitch: z.strictObject({ length: positive, width: positive, kind: sport }),
@@ -100,7 +105,7 @@ export const venueSchema = z
       }),
     ),
     shell: z
-      .object({
+      .strictObject({
         gltfUrl: name,
         // Attribution shown over the scene, as the model's licence requires.
         credit: name.optional(),

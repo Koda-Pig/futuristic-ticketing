@@ -20,7 +20,7 @@ export class MockDataSource implements DataSource {
       throw new Error(`Venue request returned HTTP ${response.status}`);
     const venue = venueSchema.parse(await response.json());
     if (venue.id !== id) throw new Error("Venue ID mismatch");
-    venue.embed.allowedOrigins.push(...import.meta.env.EMBED_ORIGINS);
+    venue.embed.allowedOrigins.push(...__EMBED_ORIGINS__);
     this.events.set(venue.event.id, venue);
     return venue;
   }

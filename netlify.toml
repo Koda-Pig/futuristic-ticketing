@@ -1,0 +1,8 @@
+# Netlify reads pnpm's version from package.json's packageManager field.
+[build]
+  command = "pnpm build"
+  publish = "dist"
+
+[build.environment]
+  # Vite 8 needs Node 20.19+ or 22.12+.
+  NODE_VERSION = "22"

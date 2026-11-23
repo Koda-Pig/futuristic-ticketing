@@ -30,19 +30,59 @@ it("loads Riverside and supplies repeatable standard and VIP availability", asyn
     await source.getVipAvailability(venue.event.id, venue.vipBoxes[0].id),
   ).toEqual(seats);
 });
+function frame(referrer: string) {
+  const parent = { postMessage: vi.fn() };
+  let listener: (event: Partial<MessageEvent>) => void = () => {};
+  vi.stubGlobal("window", {
+    parent,
+    addEventListener: (_: string, fn: typeof listener) => (listener = fn),
+  });
+  vi.stubGlobal("location", {
+    search: "?embed=1",
+    origin: "https://stadium.example",
+  });
+  vi.stubGlobal("document", { referrer });
+  return {
+    postMessage: parent.postMessage,
+    receive: (origin: string, data: unknown) =>
+      listener({ source: parent as unknown as Window, origin, data }),
+  };
+}
+
 it("only sends to an exact allowlisted parent origin in embed mode", async () => {
   vi.stubGlobal("fetch", () => Promise.resolve(Response.json(config)));
   const venue = await new MockDataSource().getVenue("riverside");
-  const postMessage = vi.fn();
-  vi.stubGlobal("window", { parent: { postMessage } });
-  vi.stubGlobal("location", { search: "?embed=1" });
-  vi.stubGlobal("document", { referrer: "http://localhost:5174/host" });
+  vi.spyOn(console, "warn").mockImplementation(() => {});
+
+  // An origin outside the allowlist hears nothing but the origin-less hello.
+  let host = frame("http://localhost:5174/host");
   embedBridge(venue)?.send("ready", {});
-  expect(postMessage).not.toHaveBeenCalled();
-  vi.stubGlobal("document", { referrer: "http://localhost:5173/host" });
+  expect(host.postMessage.mock.calls).toEqual([[{ type: "hello" }, "*"]]);
+  host.receive("http://localhost:5174", { type: "hello" });
+  expect(host.postMessage).toHaveBeenCalledTimes(1);
+
+  host = frame("http://localhost:5173/host");
   embedBridge(venue)?.send("ready", {});
-  expect(postMessage).toHaveBeenCalledWith(
+  expect(host.postMessage).toHaveBeenCalledWith(
     { type: "ready", payload: {} },
     "http://localhost:5173",
   );
+});
+
+it("learns the host's origin from embed.js when the referrer is hidden", async () => {
+  vi.stubGlobal("fetch", () => Promise.resolve(Response.json(config)));
+  const venue = await new MockDataSource().getVenue("riverside");
+  const host = frame("");
+  const bridge = embedBridge(venue)!;
+  bridge.send("ready", { id: 1 });
+  expect(host.postMessage.mock.calls).toEqual([[{ type: "hello" }, "*"]]);
+  host.receive("http://localhost:5173", { type: "hello" });
+  expect(host.postMessage).toHaveBeenLastCalledWith(
+    { type: "ready", payload: { id: 1 } },
+    "http://localhost:5173",
+  );
+  const reset = vi.fn();
+  bridge.onReset(reset);
+  host.receive("http://localhost:5173", { type: "reset" });
+  expect(reset).toHaveBeenCalledOnce();
 });

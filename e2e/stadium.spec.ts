@@ -1,6 +1,10 @@
 import { expect, test } from "@playwright/test";
+
+import { lastEvent, nextEvent } from "./events";
+import { budget } from "./timeouts";
 import { PerspectiveCamera, Vector3 } from "three";
 
+import { vipSeatId } from "../src/embed/bridge";
 import { soldSeats } from "../src/venue/availability";
 import { money } from "../src/venue/format";
 import { generateBowl } from "../src/venue/generateBowl";
@@ -36,7 +40,7 @@ test("opens the calibration page with the generated bowl", async ({ page }) => {
 test("shows the starting price when pointing at each stand", async ({
   page,
 }) => {
-  test.setTimeout(90000);
+  test.setTimeout(budget(90000));
   // Reduced motion turns off the idle auto-rotate, so the camera stays put.
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.setViewportSize({ width: 960, height: 640 });
@@ -74,7 +78,7 @@ for (const tier of ["lower", "upper"])
   test(`picks a ${tier} seat, previews its view and rejects taken seats`, async ({
     page,
   }) => {
-    test.setTimeout(tier === "lower" ? 180000 : 120000);
+    test.setTimeout(budget(tier === "lower" ? 180000 : 120000));
     await page.emulateMedia({ reducedMotion: "reduce" });
     await page.setViewportSize({ width: 960, height: 640 });
     await page.goto("/");
@@ -170,10 +174,17 @@ for (const tier of ["lower", "upper"])
             "naturalWidth",
             800,
           );
+          const chairs = vip.getByRole("group", {
+            name: "Choose your VIP seat",
+          });
           await expect(
-            vip.locator("fieldset button:disabled").first(),
+            chairs.locator("button:disabled").first(),
           ).toBeDisabled();
-          await vip.locator("fieldset button:enabled").first().click();
+          // Cape Point has four boxes; the card can switch between them.
+          await expect(
+            vip.getByRole("group", { name: "Box" }).getByRole("button"),
+          ).toHaveCount(4);
+          await chairs.locator("button:enabled").first().click();
           await vip.getByRole("button", { name: "Confirm VIP" }).click();
           await expect(page.getByText("VIP seat confirmed")).toBeVisible();
           await page.keyboard.press("Escape");
@@ -210,7 +221,7 @@ test("Riverside embed restores a seat, hands off both checkout prices and resets
   page,
   baseURL,
 }) => {
-  test.setTimeout(120000);
+  test.setTimeout(budget(120000));
   const host = "http://localhost:5173/embed-test.html";
   const html = await (await page.request.get("/embed-test.html")).text();
   await page.route(host, (route) =>
@@ -250,26 +261,37 @@ test("Riverside embed restores a seat, hands off both checkout prices and resets
   };
   await expect(events).toContainText("seatSelected " + JSON.stringify(payload));
   await frame.getByRole("button", { name: "Keep my seat" }).click();
-  await expect(events).toContainText(
-    "checkout " + JSON.stringify({ ...payload, vip: false }),
-  );
+  const standard = await lastEvent(events, "checkout");
+  expect(standard).toEqual({
+    ...payload,
+    vip: false,
+    checkoutId: expect.any(String),
+  });
   await expect(frame.getByText("Continuing to checkout…")).toBeVisible();
+  // Changing your mind after a checkout sends a new one with a new ID.
   await frame.getByRole("button", { name: "Back", exact: true }).click();
   await frame.getByRole("button", { name: /Upgrade/ }).click();
-  const chair = frame.locator("fieldset button:enabled").first();
+  const chair = frame
+    .getByRole("group", { name: "Choose your VIP seat" })
+    .locator("button:enabled")
+    .first();
   const index = Number(await chair.textContent()) - 1;
   await chair.click();
   await frame.getByRole("button", { name: "Confirm VIP" }).click();
-  await expect(events).toContainText(
-    "checkout " +
-      JSON.stringify({
-        ...payload,
-        price: venue.pricing.vip.pricePerSeat,
-        vip: true,
-        boxId: venue.vipBoxes[0].id,
-        vipSeatIndex: index,
-      }),
-  );
+  const box = venue.vipBoxes[0].id;
+  const vip = await nextEvent(events, "checkout", 1);
+  expect(vip).toEqual({
+    venueId: venue.id,
+    eventId: venue.event.id,
+    seatId: vipSeatId(box, index),
+    vip: true,
+    boxId: box,
+    vipSeatIndex: index,
+    price: venue.pricing.vip.pricePerSeat,
+    currency: "GBP",
+    checkoutId: expect.any(String),
+  });
+  expect(vip.checkoutId).not.toBe(standard.checkoutId);
   await page.getByRole("button", { name: "Reset selection" }).click();
   await expect(frame.locator(".block-panel")).toHaveCount(0);
   expect(new URL(frame.url()).searchParams.has("seat")).toBe(false);

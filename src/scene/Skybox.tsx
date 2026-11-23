@@ -42,6 +42,26 @@ function Slab({ at, size, color }: { at: Point; size: Point; color: string }) {
     </mesh>
   );
 }
+/**
+ * The box's two warm ceiling lights. Kept mounted (dark when `on` is false)
+ * because adding lights to a scene recompiles every lit material in it.
+ */
+export function SkyboxLights({ box, on }: { box: VipBox; on: boolean }) {
+  const [w, h] = box.size;
+  return (
+    <group position={box.position} rotation-y={box.rotationY}>
+      {[-1, 1].map((side) => (
+        <pointLight
+          key={side}
+          position={[side * w * 0.28, h * 0.88, 0]}
+          color="#ffd59a"
+          intensity={on ? 12 : 0}
+          distance={9}
+        />
+      ))}
+    </group>
+  );
+}
 export function Skybox({
   box,
   index,
@@ -67,19 +87,12 @@ export function Skybox({
         color="#665749"
       />
       {[-1, 1].map((side) => (
-        <group key={side}>
-          <Slab
-            at={[(side * w) / 2, h / 2, 0]}
-            size={[0.1, h, d]}
-            color="#493628"
-          />
-          <pointLight
-            position={[side * w * 0.28, h * 0.88, 0]}
-            color="#ffd59a"
-            intensity={12}
-            distance={9}
-          />
-        </group>
+        <Slab
+          key={side}
+          at={[(side * w) / 2, h / 2, 0]}
+          size={[0.1, h, d]}
+          color="#493628"
+        />
       ))}
       <mesh position={[0, h / 2, d / 2]}>
         <boxGeometry args={[w, h, 0.035]} />

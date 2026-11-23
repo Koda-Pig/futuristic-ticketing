@@ -1,4 +1,2 @@
-interface ImportMetaEnv {
-  /** Netlify deploy and production origins allowed to embed (vite.config.ts). */
-  readonly EMBED_ORIGINS: string[];
-}
+/** Netlify deploy and production origins (and the dev hosts) allowed to embed (vite.config.ts). */
+declare const __EMBED_ORIGINS__: string[];

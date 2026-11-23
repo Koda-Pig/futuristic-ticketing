@@ -34,3 +34,20 @@ it("rejects duplicate stand ids", () => {
     "id",
   ]);
 });
+
+it("needs kick-off with the venue's UTC offset, not Z", () => {
+  const utc = structuredClone(config);
+  utc.event.startsAt = "2027-03-14T15:00:00Z";
+  expect(venueSchema.safeParse(utc).error?.issues[0].path).toEqual([
+    "event",
+    "startsAt",
+  ]);
+});
+
+it("rejects unknown shell fields", () => {
+  const typo = structuredClone(config);
+  Object.assign(typo.shell, { gltfURL: typo.shell.gltfUrl });
+  expect(venueSchema.safeParse(typo).error?.issues[0].code).toBe(
+    "unrecognized_keys",
+  );
+});

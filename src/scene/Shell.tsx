@@ -1,6 +1,6 @@
 import { useGLTF } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
-import { useLayoutEffect, useMemo } from "react";
+import { useEffect, useLayoutEffect, useMemo } from "react";
 import {
   type BufferGeometry,
   type Material,
@@ -66,6 +66,13 @@ export function Shell({ shell, opening, opacity = 1, roofFade = true }: Props) {
     });
     return { model, materials: [...copies.values()] };
   }, [scene]);
+  // The copies are this instance's own; the cached GLB keeps the originals.
+  useEffect(
+    () => () => {
+      for (const material of materials) material.dispose();
+    },
+    [materials],
+  );
 
   const gl = useThree((state) => state.gl);
   useLayoutEffect(() => {

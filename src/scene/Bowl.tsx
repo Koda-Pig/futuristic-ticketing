@@ -8,9 +8,16 @@ import type { Bowl as BowlData } from "../venue/generateBowl";
 const geometry = new BoxGeometry(0.44, 0.5, 0.42);
 geometry.translate(0, -0.2, 0); // seat position is the pan; the box sits on the tread
 
-type Props = { bowl: BowlData; accent: string };
+type Props = {
+  bowl: BowlData;
+  accent: string;
+  /** Blocks drawn elsewhere (the detailed seats near the camera). */
+  hidden?: ReadonlySet<string>;
+};
 
-export function Bowl({ bowl, accent }: Props) {
+const NONE: ReadonlySet<string> = new Set();
+
+export function Bowl({ bowl, accent, hidden = NONE }: Props) {
   // Tiers get slightly different shades of the accent so they read apart.
   const colors = useMemo(
     () =>
@@ -25,6 +32,7 @@ export function Bowl({ bowl, accent }: Props) {
       bowl={bowl}
       tierId={tier.id}
       color={colors[index]}
+      hidden={hidden}
     />
   ));
 }
@@ -33,38 +41,62 @@ function TierSeats({
   bowl,
   tierId,
   color,
+  hidden,
 }: {
   bowl: BowlData;
   tierId: string;
   color: Color;
+  hidden: ReadonlySet<string>;
 }) {
   const ref = useRef<InstancedMesh>(null);
-  const seats = useMemo(
-    () => bowl.seats.filter((seat) => seat.tierId === tierId),
-    [bowl, tierId],
-  );
-  const invalidate = useThree((state) => state.invalidate);
-  useLayoutEffect(() => {
-    const mesh = ref.current!;
+  // generateBowl emits each tier's seats, and each block's, contiguously.
+  const { start, count, blocks } = useMemo(() => {
+    const blocks = bowl.blocks.filter((b) => b.tierId === tierId);
+    const start = blocks[0]?.seatStart ?? 0;
+    const count = blocks.reduce((n, b) => n + b.seatCount, 0);
+    return { start, count, blocks };
+  }, [bowl, tierId]);
+  // Every seat's matrix, computed once; hiding a block zeroes its range.
+  const matrices = useMemo(() => {
+    const out = new Float32Array(count * 16);
     const dummy = new Object3D();
-    seats.forEach((seat, i) => {
+    for (let i = 0; i < count; i++) {
+      const seat = bowl.seats[start + i];
       dummy.position.set(...seat.position);
       dummy.rotation.set(0, seat.yaw, 0);
       dummy.updateMatrix();
-      mesh.setMatrixAt(i, dummy.matrix);
-      mesh.setColorAt(i, color);
-    });
-    mesh.instanceMatrix.needsUpdate = true;
+      dummy.matrix.toArray(out, i * 16);
+    }
+    return out;
+  }, [bowl, start, count]);
+  const invalidate = useThree((state) => state.invalidate);
+  useLayoutEffect(() => {
+    const mesh = ref.current!;
+    for (let i = 0; i < count; i++) mesh.setColorAt(i, color);
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+    invalidate();
+  }, [count, color, invalidate]);
+  useLayoutEffect(() => {
+    const mesh = ref.current!;
+    const array = mesh.instanceMatrix.array as Float32Array;
+    array.set(matrices);
+    for (const block of blocks)
+      if (hidden.has(block.id))
+        array.fill(
+          0,
+          (block.seatStart - start) * 16,
+          (block.seatStart - start + block.seatCount) * 16,
+        );
+    mesh.instanceMatrix.needsUpdate = true;
     mesh.computeBoundingSphere();
     invalidate();
-  }, [seats, color, invalidate]);
+  }, [matrices, blocks, start, hidden, invalidate]);
   return (
     <instancedMesh
       // A new mesh when the count changes; instanced buffers are fixed-size.
-      key={seats.length}
+      key={count}
       ref={ref}
-      args={[geometry, undefined, seats.length]}
+      args={[geometry, undefined, count]}
       castShadow
       receiveShadow
     >
