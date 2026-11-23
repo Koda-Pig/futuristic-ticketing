@@ -2,22 +2,32 @@
   "Srebro_03__wytarte": {
     "action": "decimate",
     "ratio": 0.095,
-    "surface": "steel"
+    "surface": "steel",
+    "sloppy": true,
+    "prune": true
   },
   "Beton_16": {
     "action": "decimate",
     "ratio": 0.13,
-    "surface": "concrete"
+    "surface": "concrete",
+    "uv": "box",
+    "maxError": 0.05,
+    "lockBorder": false,
+    "prune": true
   },
   "Color_M07": {
     "action": "decimate",
     "ratio": 0.019,
-    "surface": "charcoal"
+    "surface": "charcoal",
+    "sloppy": true,
+    "maxError": 0.15,
+    "lockBorder": false,
+    "prune": true
   },
   "material": {
     "action": "decimate",
     "ratio": 0.18,
-    "surface": "concrete"
+    "surface": "concreteFlat"
   },
   "Aluminium_01__nierdzewne_9": {
     "action": "keep",
@@ -30,7 +40,8 @@
   "Aluminium_01__nierdzewne": {
     "action": "decimate",
     "ratio": 0.095,
-    "surface": "steel"
+    "surface": "steel",
+    "sloppy": true
   },
   "Stal_02__szorstka_1_2": {
     "action": "keep",
@@ -39,7 +50,8 @@
   "Stal_02__szorstka_1_0": {
     "action": "decimate",
     "ratio": 0.095,
-    "surface": "steel"
+    "surface": "steel",
+    "sloppy": true
   },
   "Stal_02__szorstka": {
     "action": "keep",
@@ -47,13 +59,16 @@
   },
   "Stal_02__szorstka_1": {
     "action": "decimate",
-    "ratio": 0.019,
-    "surface": "steel"
+    "ratio": 0.12,
+    "surface": "truss",
+    "maxError": 0.08,
+    "prune": true
   },
   "Color_H01": {
     "action": "decimate",
     "ratio": 0.095,
-    "surface": "charcoal"
+    "surface": "charcoal",
+    "sloppy": true
   },
   "Color_M07_1": {
     "action": "keep",
@@ -62,22 +77,29 @@
   "Beton_16_3": {
     "action": "decimate",
     "ratio": 0.13,
-    "surface": "concrete"
+    "surface": "concrete",
+    "uv": "box",
+    "maxError": 0.05,
+    "lockBorder": false,
+    "prune": true
   },
   "Color_I08": {
     "action": "decimate",
     "ratio": 0.18,
-    "surface": "ochre"
+    "surface": "ochre",
+    "sloppy": true
   },
   "Color_C04": {
     "action": "decimate",
     "ratio": 0.18,
-    "surface": "ochre"
+    "surface": "ochre",
+    "sloppy": true
   },
   "Color_D08": {
     "action": "decimate",
     "ratio": 0.095,
-    "surface": "steel"
+    "surface": "steel",
+    "sloppy": true
   },
   "Tworzywo_sztuczne_01": {
     "action": "drop"
@@ -97,12 +119,14 @@
   "Color_M00": {
     "action": "decimate",
     "ratio": 0.18,
-    "surface": "white"
+    "surface": "white",
+    "sloppy": true
   },
   "Srebro_03__wytarte_4": {
     "action": "decimate",
     "ratio": 0.095,
-    "surface": "steel"
+    "surface": "steel",
+    "sloppy": true
   },
   "edge_color100100100255": {
     "action": "drop"
@@ -121,12 +145,14 @@
   "Color_I02": {
     "action": "decimate",
     "ratio": 0.095,
-    "surface": "steel"
+    "surface": "steel",
+    "sloppy": true
   },
   "Color_K02": {
     "action": "decimate",
     "ratio": 0.095,
-    "surface": "steel"
+    "surface": "steel",
+    "sloppy": true
   },
   "Color_M08": {
     "action": "keep",
@@ -135,7 +161,8 @@
   "Translucent_Glass_Gray": {
     "action": "decimate",
     "ratio": 0.18,
-    "surface": "glass"
+    "surface": "glass",
+    "sloppy": true
   },
   "Color_M09": {
     "action": "keep",
@@ -151,7 +178,8 @@
   "Stal_03__wytarta": {
     "action": "decimate",
     "ratio": 0.095,
-    "surface": "steel"
+    "surface": "steel",
+    "sloppy": true
   },
   "edge_color000255": {
     "action": "drop"
@@ -163,17 +191,21 @@
   "Color_M08_1": {
     "action": "decimate",
     "ratio": 0.095,
-    "surface": "charcoal"
+    "surface": "charcoal",
+    "sloppy": true
   },
   "Skra_07": {
     "action": "decimate",
     "ratio": 0.08,
-    "surface": "leather"
+    "surface": "leather",
+    "prune": true,
+    "maxError": 0.02
   },
   "Wood_47_1_6": {
     "action": "decimate",
     "ratio": 0.18,
-    "surface": "wood"
+    "surface": "wood",
+    "sloppy": true
   },
   "Color_B01": {
     "action": "keep",

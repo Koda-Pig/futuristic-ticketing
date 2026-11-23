@@ -50,6 +50,11 @@ button {
   padding: 4px 7px;
   cursor: pointer;
 }
+#options {
+  display: grid;
+  gap: 4px;
+  margin-top: 10px;
+}
 #materials div {
   display: flex;
   align-items: center;

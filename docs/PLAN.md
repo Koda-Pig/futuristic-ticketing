@@ -171,7 +171,7 @@ type CameraPose = { position: [number, number, number]; target: [number, number,
 
 Validate with zod on load. On a validation error, show a full-screen developer message that names the field.
 
-**Cape Point Stadium values:** write them during M2 calibration (see §7). Starting guesses: pitch 105×68; outline halfLength 64, halfWidth 46, exponent 3.2; three tiers (lower 22 rows, middle 14, upper 20); stands N/E/S/W, each split into a centre stand plus corners (8 stands); blocks ≈ 6–9 per stand per tier; target ≈ 34k seats. VIP boxes along the west side at middle-tier level, matching the skyboxes in the model.
+**Cape Point Stadium values:** write them during M2 calibration (see §7). Starting guesses: pitch 105×68; outline halfLength 64, halfWidth 46, exponent 3.2; three tiers (lower 22 rows, middle 14, upper 20); stands N/E/S/W, each split into a centre stand plus corners (8 stands); blocks ≈ 6–9 per stand per tier; target ≈ 34k seats. VIP boxes on the east side at hospitality level (world x ≈ 63–70 m, y ≈ 10–13 m), behind the model's leather seating tier; see docs/ASSETS.md for positions.
 
 **Prices (ZAR):** lower sideline R 850, lower corners R 650, lower ends R 450; middle sideline R 1,250, middle corners/ends R 750; upper sideline R 450, upper corners/ends R 300; VIP skybox R 3,750/seat. The Upgrade button shows the difference (e.g. `+R 2,500`).
 
@@ -214,9 +214,10 @@ Steps:
    Expected: drop the public seat shells and their steel frames (if the frames are a separate material, or only reachable by bounding volume, drop the primitives that sit inside the seating-bowl volume). Keep and decimate the roof, facade, membrane, skyboxes, LED screens, concourse and pitch surroundings. Drop the model's own pitch (we render ours).
 2. **`scripts/process-stadium.mjs`** (Node, using `@gltf-transform/core`, `/functions`, `/extensions`, `meshoptimizer`, `sharp`):
    read → apply the drop rules → `weld` → `simplify` per material ratio (meshopt simplifier, `lockBorder: true`) → `dedup` → `prune` → `join` (merge meshes per material) → `palette`/flatten for flat-coloured materials → resize textures to ≤1024 px and convert them to WebP (KTX2 only if `toktx` is installed; optional) → `meshopt` compression → write `public/venues/cape-point/shell.glb`.
-   Print a before/after table (triangles, materials, bytes). **Target: ≤300k triangles, ≤15 materials, ≤15 MB.**
+   Simplification error limits are in metres (`maxError` per rule, converted with meshopt `getScale`), never meshopt's raw relative error: on a stadium-sized mesh a relative 0.002 is ~20 cm and flattens the steps. Normals stripped for simplification are rebuilt as creased normals (40°); textured concrete gets box-projected UVs (`"uv": "box"`).
+   Print a before/after table (triangles, materials, bytes) and a per-surface table. **Target: ≤850k triangles, ≤15 materials, ≤15 MB** (raised from 300k on 2026-11-23: the model's terraces, fascia rails and trusses could not go lower without visible damage, and v1 is desktop-only).
 3. **Check:** `?debug=shell` loads only the processed GLB with fixed camera bookmarks (overview, sideline low, the skybox exterior) for screenshot comparisons.
-4. **Fallback:** if the model's skybox interiors are missing or unusable, build a procedural box interior in `Skybox.tsx` (floor, back wall, glazing, 2 rows of 4 leather recliners from a small procedural/CC0 seat model) and place it at the `vipBoxes` poses.
+4. **Skybox interiors (confirmed missing):** the dark "windows" behind the east hospitality seats and along the top of the upper tiers are opaque black panels on solid concrete, so there are no interiors to fly into. Therefore build a procedural box interior in `Skybox.tsx` (floor, back wall, glazing, 2 rows of 4 leather recliners from a small procedural/CC0 seat model) and place it at the `vipBoxes` poses.
 5. Credits: "Stadium model: 'Modern Stadium' by Razny (Sketchfab), Sketchfab Standard licence", shown in `Credits.tsx` and in the README.
 
 **Licence note:** the Standard licence allows commercial use and derivatives but bars redistributing the asset itself. We only ship a processed derivative. Before selling to a client, have someone review the licence or replace the model with one licensed for the purpose.
@@ -260,6 +261,7 @@ Transitions and controls:
 ## 9. Scene and visuals
 
 - **Renderer:** `<Canvas dpr={[1, 1.5]} gl={{ antialias: false }}>`, ACES filmic tone mapping, sRGB output. Post-processing: SMAA, Bloom (luminance threshold so only LEDs, floodlight heads and the roof edge glow), and a slight vignette. A `PerformanceMonitor` drops bloom → crowd → DPR 1 in that order when it detects a sustained fps drop.
+- **Roof fade:** the `roof`, `membrane`, `glass` and `truss` surfaces fade from opaque to ~12% opacity as the camera rises from 35 m to 90 m, otherwise the roof hides the stands in the overview. They cast no shadows, since floodlights hang under the roof edge. Prototyped in the inspector (`src/inspector.js`, `ROOF_FADE`).
 - **Lighting:** a night `Environment` (a drei preset or small HDR, intensity ≈ 0.3), a hemisphere fill, and 4 directional "floodlight" lights (one shadow-casting, 2048 shadow map limited to the pitch and lower bowl). The floodlight masts or roof lights are emissive meshes.
 - **Pitch:** procedural shader with mowing stripes, line markings drawn from `pitch.kind` (football or rugby lines), and a subtle darker edge. Goalposts as simple geometry.
 - **Ground (overview):** dark ground plane with car parks (emissive line markings), paths, and instanced low-poly trees (≤ 600) on a ring around the stadium. Faint ambient glow from the stadium onto the ground.
@@ -333,7 +335,7 @@ Host page:
 |---|---|
 | Frame rate | 60 fps on M1 MacBook Air (1440p, DPR 1.5) and a mid-range Windows laptop with integrated graphics, in every phase |
 | First interactive frame (generated bowl + pitch, no shell) | < 3 s on cable |
-| Shell GLB | ≤ 15 MB, loads after first frame and fades in |
+| Shell GLB | ≤ 15 MB and ≤ 850k triangles, loads after first frame and fades in |
 | Total initial transfer | ≤ 20 MB |
 | JS bundle | ≤ 600 kB gzip (three + R3F + drei tree-shaken) |
 | Draw calls (overview) | ≤ 250 |
@@ -355,7 +357,7 @@ Vite React-TS, ESLint and Prettier, Vitest, Playwright, zustand, R3F, drei, post
 
 **M1: Shell asset pipeline**
 `?debug=materials` viewer; fill in `stadium-materials.json`; `process-stadium.mjs`; `?debug=shell` with camera bookmarks. Identify `Color_M07`. Locate the skyboxes and record their poses.
-✅ `shell.glb` ≤ 15 MB, ≤ 300k triangles, no public seats left, roof, facade, LED screens and skyboxes intact, correct scale (pitch ≈105 m). Before/after table committed in `docs/ASSETS.md`.
+✅ `shell.glb` ≤ 15 MB, ≤ 850k triangles, terraces free of tears at the Sideline and Skybox bookmarks, no public seats left, roof, facade, LED screens and skyboxes intact, correct scale (pitch ≈105 m). Before/after table committed in `docs/ASSETS.md`.
 
 **M2: Venue schema + bowl generator + calibration**
 `schema.ts`, `generateBowl.ts` with tests, far-LOD `Bowl`, and the `?calibrate` page (leva sliders for outline/tier/stand params, shell shown at 50% opacity, an "Export JSON" button). Fit Cape Point's config to the shell.
@@ -418,7 +420,7 @@ Adaptive quality, a loading screen with a progress bar (drei `useProgress`), eas
 |---|---|
 | The model's terraces don't fit a superellipse bowl | Allow per-tier outline overrides (`outline` per tier) and per-stand radial offsets in the config; the calibration page exposes them |
 | Seats and frames can't be separated cleanly by material | Drop primitives by bounding volume inside the bowl region; worst case, use `ProceduralShell` for Cape Point too and keep the model only for the roof and skyboxes |
-| Skybox interiors are missing or low quality | Procedural box interior (§7.4) |
+| Skybox interiors are missing (confirmed in M1) | Procedural box interior (§7.4); in M6 check whether the space behind the east panel band is solid, and if so hide that wall section (clipping box) where the box is inserted |
 | Shell is over budget after decimation | Lower the steel ratios, drop interior concourse geometry that isn't visible from inside the bowl or from above |
 | Raycasting 34k seats is slow | Raycast only the active block's InstancedMesh; stands and blocks pick via their hit meshes |
 | Licence objections from a prospective client | Swap the shell; nothing interactive depends on it |
