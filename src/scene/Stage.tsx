@@ -1,14 +1,16 @@
 import { OrbitControls } from "@react-three/drei";
-import { Canvas } from "@react-three/fiber";
+import { Canvas, useFrame } from "@react-three/fiber";
 import {
   type ComponentProps,
   type ReactNode,
   Suspense,
   useEffect,
+  useLayoutEffect,
+  type ComponentRef,
   useRef,
   useState,
 } from "react";
-import { ACESFilmicToneMapping } from "three";
+import { ACESFilmicToneMapping, Vector3 } from "three";
 
 import type { VenueConfig } from "../venue/schema";
 
@@ -16,10 +18,17 @@ type Props = {
   venue: VenueConfig;
   children: ReactNode;
   overview?: boolean;
+  blockPose?: VenueConfig["cameras"]["overview"];
   controls?: ComponentProps<typeof OrbitControls>;
 };
 
-export function Stage({ venue, children, controls, overview = false }: Props) {
+export function Stage({
+  venue,
+  children,
+  controls,
+  blockPose,
+  overview = false,
+}: Props) {
   const { position, target } = venue.cameras.overview;
   return (
     <Canvas
@@ -48,7 +57,10 @@ export function Stage({ venue, children, controls, overview = false }: Props) {
       )}
       <Suspense fallback={null}>{children}</Suspense>
       {overview ? (
-        <CameraDirector target={target} />
+        <CameraDirector
+          overview={venue.cameras.overview}
+          blockPose={blockPose}
+        />
       ) : (
         <OrbitControls
           makeDefault
@@ -62,27 +74,81 @@ export function Stage({ venue, children, controls, overview = false }: Props) {
 }
 
 function CameraDirector({
-  target,
+  overview,
+  blockPose,
 }: {
-  target: VenueConfig["cameras"]["overview"]["target"];
+  overview: VenueConfig["cameras"]["overview"];
+  blockPose?: VenueConfig["cameras"]["overview"];
 }) {
+  const orbit = useRef<ComponentRef<typeof OrbitControls>>(null);
+  const flight = useRef<{
+    position: Vector3;
+    target: Vector3;
+    elapsed: number;
+  } | null>(null);
   // Auto-rotate only while idle, and never for viewers who ask for less motion.
   const [still] = useState(
     () => matchMedia("(prefers-reduced-motion: reduce)").matches,
   );
+  const pose = blockPose ?? overview;
+  const previous = useRef(pose);
+  useLayoutEffect(() => {
+    const control = orbit.current;
+    if (!control || previous.current === pose) return;
+    previous.current = pose;
+    flight.current = {
+      position: control.object.position.clone(),
+      target: control.target.clone(),
+      elapsed: 0,
+    };
+    control.enabled = false;
+  }, [pose]);
+  useFrame((_, delta) => {
+    const move = flight.current,
+      control = orbit.current;
+    if (!move || !control) return;
+    move.elapsed += delta;
+    const t = still ? 1 : Math.min(1, move.elapsed / 1.4);
+    const ease = t * t * (3 - 2 * t);
+    control.minDistance = 0;
+    control.maxDistance = Infinity;
+    control.minAzimuthAngle = -Infinity;
+    control.maxAzimuthAngle = Infinity;
+    control.object.position.lerpVectors(
+      move.position,
+      new Vector3(...pose.position),
+      ease,
+    );
+    control.target.lerpVectors(move.target, new Vector3(...pose.target), ease);
+    control.update();
+    if (t === 1) {
+      const angle = control.getAzimuthalAngle();
+      control.minAzimuthAngle = blockPose
+        ? angle - (Math.PI * 25) / 180
+        : -Infinity;
+      control.maxAzimuthAngle = blockPose
+        ? angle + (Math.PI * 25) / 180
+        : Infinity;
+      control.minDistance = blockPose ? 8 : 150;
+      control.maxDistance = blockPose ? 45 : 400;
+      control.enabled = true;
+      flight.current = null;
+    }
+  });
   const [idle, setIdle] = useState(true);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   useEffect(() => () => clearTimeout(timer.current), []);
   return (
     <OrbitControls
       makeDefault
-      target={target}
+      ref={orbit}
+      target={overview.target}
       enablePan={false}
       minDistance={150}
       maxDistance={400}
       minPolarAngle={Math.PI / 12}
       maxPolarAngle={(Math.PI * 70) / 180}
-      autoRotate={idle && !still}
+      autoRotate={idle && !still && !blockPose}
       autoRotateSpeed={0.35}
       onStart={() => {
         clearTimeout(timer.current);

@@ -15,7 +15,8 @@ export const SEAT_PAN_HEIGHT = 0.45;
 const EYE_HEIGHT = 1.15;
 const EYE_FORWARD = 0.15;
 const FLY_IN_DISTANCE = 18;
-const FLY_IN_HEIGHT = 10;
+// 10 m (plan §8) puts upper-tier cameras inside Cape Point's roof; 7 m clears every block.
+const FLY_IN_HEIGHT = 7;
 const HIT_MESH_SPACING = 2;
 
 export type Seat = {

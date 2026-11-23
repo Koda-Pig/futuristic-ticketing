@@ -1,7 +1,11 @@
 import { createRoot } from "react-dom/client";
-import { useMemo, useRef, useState, Suspense } from "react";
+import { useEffect, useMemo, useRef, useState, Suspense } from "react";
 import { z } from "zod";
 
+import { BlockSeats } from "./scene/BlockSeats";
+import { SeatPreview } from "./scene/SeatPreview";
+import { soldSeats } from "./venue/availability";
+import type { Block, Seat } from "./venue/generateBowl";
 import { Stand } from "./scene/Stand";
 import { kickoff, money } from "./venue/format";
 import { MatchNight } from "./scene/MatchNight";
@@ -60,6 +64,53 @@ function Stadium({ venue }: { venue: VenueConfig }) {
     [bowl, venue],
   );
   const [hover, setHover] = useState<string | null>(null);
+  const [block, setBlock] = useState<Block | null>(null);
+  const [seat, setSeat] = useState<Seat | null>(null);
+  const [selected, setSelected] = useState<Seat | null>(null);
+  const [rejections, reject] = useState(0);
+  const preview = useRef<HTMLCanvasElement>(null);
+  const sold = useMemo(
+    () => soldSeats(bowl, venue.availability),
+    [bowl, venue],
+  );
+  const nearby = useMemo(() => {
+    if (!block) return [];
+    const tier = bowl.blocks.filter((b) => b.tierId === block.tierId);
+    const i = tier.indexOf(block);
+    return [
+      ...new Set([
+        block,
+        tier[(i + 1) % tier.length],
+        tier[(i + tier.length - 1) % tier.length],
+      ]),
+    ];
+  }, [block, bowl]);
+  const farBowl = useMemo(
+    () =>
+      nearby.length
+        ? {
+            ...bowl,
+            seats: bowl.seats.filter(
+              (s) => !nearby.some((b) => b.id === s.blockId),
+            ),
+          }
+        : bowl,
+    [bowl, nearby],
+  );
+  function back() {
+    if (selected) setSelected(null);
+    else setBlock(null);
+    setSeat(null);
+    setHover(null);
+  }
+  useEffect(() => {
+    const escape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") back();
+    };
+    window.addEventListener("keydown", escape);
+    return () => window.removeEventListener("keydown", escape);
+  }, [selected]);
+  const shown = selected ?? seat;
   const tag = useRef<HTMLOutputElement>(null);
   const active = groups.find((group) => group.stand.id === hover);
   const { day, time } = kickoff(venue);
@@ -67,7 +118,10 @@ function Stadium({ venue }: { venue: VenueConfig }) {
     <main
       className="overview"
       aria-label={venue.name}
-      onPointerLeave={() => setHover(null)}
+      onPointerLeave={() => {
+        setHover(null);
+        setSeat(null);
+      }}
       onPointerMove={(e) => {
         if (tag.current) {
           tag.current.style.left =
@@ -77,20 +131,47 @@ function Stadium({ venue }: { venue: VenueConfig }) {
         }
       }}
     >
-      <Stage venue={venue} overview>
+      <Stage venue={venue} overview blockPose={block?.flyIn}>
         <MatchNight venue={venue} />
         {venue.shell && (
           <Suspense fallback={null}>
             <Shell shell={venue.shell} />
           </Suspense>
         )}
-        <Bowl bowl={bowl} accent={venue.branding.accent} />
+        {nearby.map((b) => (
+          <BlockSeats
+            key={b.id}
+            block={b}
+            bowl={bowl}
+            accent={venue.branding.accent}
+            sold={sold}
+            hover={seat}
+            selected={selected}
+            interactive={b === block && !selected}
+            onHover={setSeat}
+            onPick={(s) => {
+              setSeat(s);
+              if (sold.has(s.id)) reject((n) => n + 1);
+              else setSelected(s);
+            }}
+          />
+        ))}
+        {shown && <SeatPreview seat={shown} canvas={preview} />}
+        <Bowl bowl={farBowl} accent={venue.branding.accent} />
         {groups.map(({ stand, blocks }) => (
           <Stand
             key={stand.id}
             venue={venue}
             blocks={blocks}
             active={stand.id === hover}
+            onEnter={
+              block
+                ? undefined
+                : (b) => {
+                    setHover(null);
+                    setBlock(b);
+                  }
+            }
             onHover={setHover}
           />
         ))}
@@ -107,7 +188,7 @@ function Stadium({ venue }: { venue: VenueConfig }) {
           {day} · {time}
         </time>
       </header>
-      <output ref={tag} hidden={!active} className="stand-tag">
+      <output ref={tag} hidden={!active || !!block} className="stand-tag">
         {active && (
           <>
             <small>From</small>
@@ -125,7 +206,40 @@ function Stadium({ venue }: { venue: VenueConfig }) {
           </>
         )}
       </output>
-      <footer>Drag to orbit · Scroll to zoom</footer>
+      {block && (
+        <section className="block-panel">
+          <button onClick={back}>Back</button>
+          <strong>Block {block.id}</strong>
+        </section>
+      )}
+      {shown && (
+        <section className="seat-tooltip" aria-label="Seat details">
+          <canvas
+            key={shown.id}
+            width={320}
+            height={180}
+            ref={preview}
+            aria-label="View from this seat"
+          />
+          <strong>
+            Block {shown.blockId} · Row {shown.row} · Seat {shown.seat}
+          </strong>
+          <span>
+            {money(venue, venue.pricing.tiers[shown.tierId][shown.standId])}
+          </span>
+          <span
+            key={rejections}
+            className={sold.has(shown.id) && rejections ? "taken" : undefined}
+          >
+            {sold.has(shown.id) ? "Taken" : selected ? "Selected" : "Available"}
+          </span>
+        </section>
+      )}
+      <footer>
+        {block
+          ? "Esc to go back"
+          : "Drag to orbit · Scroll to zoom · Click a block"}
+      </footer>
       {venue.shell?.credit && <aside>{venue.shell.credit}</aside>}
     </main>
   );

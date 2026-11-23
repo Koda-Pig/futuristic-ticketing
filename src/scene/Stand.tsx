@@ -37,22 +37,26 @@ export function Stand({
   venue,
   active,
   onHover,
+  onEnter,
 }: {
   blocks: Block[];
   venue: VenueConfig;
   active: boolean;
+  onEnter?: (block: Block) => void;
   onHover: Dispatch<SetStateAction<string | null>>;
 }) {
   const surfaces = useMemo(() => {
     const points: number[] = [],
       indices: number[] = [],
       edges: number[] = [];
+    const faceOwners: Block[] = [];
     const ribbons = venue.tiers.flatMap((tier) => {
       const band: number[] = [],
         uv: number[] = [],
         faces: number[] = [];
       for (const block of blocks.filter((b) => b.tierId === tier.id)) {
         const { positions: p, indices: i } = block.hitMesh;
+        for (let face = 0; face < i.length; face += 3) faceOwners.push(block);
         const start = points.length / 3;
         points.push(...p);
         indices.push(...i.map((n) => n + start));
@@ -89,7 +93,12 @@ export function Stand({
         },
       ];
     });
-    return { hit: surface(points, indices), edges: surface(edges), ribbons };
+    return {
+      faceOwners,
+      hit: surface(points, indices),
+      edges: surface(edges),
+      ribbons,
+    };
   }, [blocks, venue]);
   useEffect(
     () => () => {
@@ -110,6 +119,13 @@ export function Stand({
       <mesh
         geometry={surfaces.hit}
         position-y={0.35}
+        visible={!!onEnter}
+        {...(!onEnter && { raycast: () => {} })}
+        onClick={(e) => {
+          e.stopPropagation();
+          if (e.delta < 5 && e.faceIndex != null)
+            onEnter?.(surfaces.faceOwners[e.faceIndex]);
+        }}
         onPointerOver={(e) => {
           e.stopPropagation();
           onHover(blocks[0].standId);

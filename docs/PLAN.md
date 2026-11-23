@@ -281,7 +281,7 @@ Transitions and controls:
 ### Camera choreography (drei `CameraControls`, `smoothTime ≈ 0.6`)
 
 - **Overview:** high orbit (~45° elevation, ~260 m out), slow auto-rotate while idle (stops on interaction, resumes after 8 s). Polar angle clamped to 15°–70°, distance 150–400 m, no panning.
-- **Block fly-in:** a 1.4 s eased move to a pose above and in front of the block: about 18 m out towards the pitch from the block's centroid and 10 m above its mid row, looking at the block centroid. Orbit is limited to ±25° around that pose.
+- **Block fly-in:** a 1.4 s eased move to a pose above and in front of the block: about 18 m out towards the pitch from the block's centroid and 7 m above its mid row (was 10 m; see DECISIONS), looking at the block centroid. Orbit is limited to ±25° around that pose.
 - **Seat:** a 1.2 s move to `seat.eye`, looking at the pitch centre (slightly toward the near half). Drag to look around (yaw ±70°, pitch ±25°). No translation.
 - **Upgrade:** a 2.0 s path: pull back out of the bowl → arc to a pose outside the skybox glass (hold 0.4 s) → push through the glass to the box's interior viewpoint. Implement it as chained `setLookAt` calls with awaited promises.
 - **VIP seat:** a 0.8 s move to the chosen recliner's eye position.

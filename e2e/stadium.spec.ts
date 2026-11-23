@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { PerspectiveCamera, Vector3 } from "three";
 
+import { soldSeats } from "../src/venue/availability";
 import { money } from "../src/venue/format";
 import { generateBowl } from "../src/venue/generateBowl";
 import { venueSchema } from "../src/venue/schema";
@@ -67,4 +68,70 @@ test("shows the starting price when pointing at each stand", async ({
     expect(found, stand.label).toBe(true);
     await expect(tag).toContainText(money(venue, cheapest));
   }
+});
+
+test("picks generated seats, previews their views and rejects taken seats", async ({
+  page,
+}) => {
+  test.setTimeout(120000);
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.setViewportSize({ width: 960, height: 640 });
+  await page.goto("/");
+  await expect(page.locator("canvas[data-ready]")).toBeVisible();
+  const venue = venueSchema.parse(
+    await (await page.request.get("/venues/cape-point/venue.json")).json(),
+  );
+  const bowl = generateBowl(venue);
+  const camera = new PerspectiveCamera(43, 1.5, 0.1, 1000);
+  function aim(pose: typeof venue.cameras.overview) {
+    camera.position.set(...pose.position);
+    camera.lookAt(...pose.target);
+    camera.updateMatrixWorld();
+  }
+  function screen(position: [number, number, number]) {
+    const p = new Vector3(...position).project(camera);
+    return { x: (p.x + 1) * 480, y: (1 - p.y) * 320 };
+  }
+  aim(venue.cameras.overview);
+  const point = screen(
+    bowl.blocks.find((b) => b.tierId === "upper" && b.standId === "east")!
+      .centroid,
+  );
+  await page.mouse.click(point.x, point.y);
+  const panel = page.locator(".block-panel");
+  await expect(panel).toBeVisible();
+  const blockId = (await panel.locator("strong").innerText()).replace(
+    "Block ",
+    "",
+  );
+  const block = bowl.blocks.find((b) => b.id === blockId)!;
+  aim(block.flyIn);
+  const sold = soldSeats(bowl, venue.availability);
+  const seats = bowl.seats.slice(
+    block.seatStart,
+    block.seatStart + block.seatCount,
+  );
+  for (const taken of [true, false]) {
+    const seat = seats.find(
+      (s) => s.row === Math.ceil(block.rows / 2) && sold.has(s.id) === taken,
+    )!;
+    const p = screen(seat.position);
+    await expect(async () => {
+      await page.mouse.move(p.x + 2, p.y);
+      await page.mouse.move(p.x, p.y);
+      await expect(page.locator(".seat-tooltip canvas")).toHaveAttribute(
+        "data-seat",
+        seat.id,
+        { timeout: 2000 },
+      );
+    }).toPass({ timeout: 20000 });
+    await page.mouse.click(p.x, p.y);
+    await expect(page.locator(".seat-tooltip")).toContainText(
+      taken ? "Taken" : "Selected",
+    );
+  }
+  await page.keyboard.press("Escape");
+  await expect(panel).toBeVisible();
+  await panel.getByRole("button", { name: "Back" }).click();
+  await expect(panel).toBeHidden();
 });

@@ -71,3 +71,50 @@
   color: #bdc8cc;
   max-width: 42vw;
 }
+.block-panel,
+.seat-tooltip {
+  position: absolute;
+  background: #101820ec;
+  border-radius: 7px;
+  padding: 12px 16px;
+}
+.block-panel {
+  right: 16px;
+  top: 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.block-panel button {
+  background: #293a42;
+  color: white;
+  border: 1px solid #70858d;
+  border-radius: 4px;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+.seat-tooltip {
+  bottom: 72px;
+  left: 16px;
+  display: grid;
+  gap: 4px;
+  pointer-events: none;
+}
+.seat-tooltip canvas {
+  width: 160px;
+  height: 90px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .taken {
+    animation: shake 0.24s;
+  }
+  @keyframes shake {
+    25%,
+    75% {
+      transform: translateX(-3px);
+    }
+    50% {
+      transform: translateX(3px);
+    }
+  }
+}
