@@ -14,7 +14,27 @@
     </style>
   </head>
   <body>
-    <div id="root"></div>
+    <!-- Replaced when the app mounts; shows while the JS bundle downloads. -->
+    <div id="root">
+      <div
+        role="status"
+        style="
+          position: fixed;
+          inset: 0;
+          display: grid;
+          place-content: center;
+          gap: 14px;
+          font:
+            13px system-ui,
+            sans-serif;
+          letter-spacing: 0.12em;
+          text-transform: uppercase;
+          color: #c5d2d6;
+        "
+      >
+        Loading stadium…
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

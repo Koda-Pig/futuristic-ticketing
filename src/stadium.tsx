@@ -15,6 +15,14 @@ import { Stand } from "./scene/Stand";
 import { kickoff, money } from "./venue/format";
 import { MatchNight } from "./scene/MatchNight";
 import "./overview.css";
+import {
+  DesktopGate,
+  ErrorBoundary,
+  ErrorCard,
+  hasWebGL2,
+  Loading,
+  NoWebGL,
+} from "./notices";
 import { Bowl } from "./scene/Bowl";
 import { Shell } from "./scene/Shell";
 import { Stage } from "./scene/Stage";
@@ -36,44 +44,45 @@ export async function mountVenue(
     document.title = query.has("calibrate")
       ? venue.name + " · Calibrate"
       : venue.name;
-    reactRoot.render(await render(venue));
+    reactRoot.render(<ErrorBoundary>{await render(venue)}</ErrorBoundary>);
   } catch (error) {
     const message =
       error instanceof z.ZodError ? z.prettifyError(error) : String(error);
     reactRoot.render(
-      <main role="alert">
-        <h1>Could not load venue</h1>
-        <pre>{message}</pre>
-      </main>,
+      <ErrorCard title="We couldn't load this venue" detail={message} />,
     );
     return;
   }
 }
 
 export const mount = (root: HTMLElement) =>
-  mountVenue(root, async (venue) => {
-    const bowl = generateBowl(venue);
-    const box = venue.vipBoxes[0];
-    const [availability, vipAvailable] = await Promise.all([
-      source.getAvailability(venue.event.id, bowl),
-      box
-        ? source.getVipAvailability(venue.event.id, box.id)
-        : Promise.resolve([]),
-    ]);
-    const sold = new Set(
-      [...availability]
-        .filter(([, status]) => status === "sold")
-        .map(([id]) => id),
-    );
-    return (
-      <Stadium
-        venue={venue}
-        bowl={bowl}
-        sold={sold}
-        vipAvailable={vipAvailable}
-      />
-    );
-  });
+  hasWebGL2()
+    ? mountVenue(root, async (venue) => {
+        const bowl = generateBowl(venue);
+        const box = venue.vipBoxes[0];
+        const [availability, vipAvailable] = await Promise.all([
+          source.getAvailability(venue.event.id, bowl),
+          box
+            ? source.getVipAvailability(venue.event.id, box.id)
+            : Promise.resolve([]),
+        ]);
+        const sold = new Set(
+          [...availability]
+            .filter(([, status]) => status === "sold")
+            .map(([id]) => id),
+        );
+        return (
+          <DesktopGate>
+            <Stadium
+              venue={venue}
+              bowl={bowl}
+              sold={sold}
+              vipAvailable={vipAvailable}
+            />
+          </DesktopGate>
+        );
+      })
+    : createRoot(root).render(<NoWebGL />);
 
 function Stadium({
   venue,
@@ -87,6 +96,8 @@ function Stadium({
   vipAvailable: boolean[];
 }) {
   const [query] = useState(() => new URLSearchParams(location.search));
+  const [ready, setReady] = useState(false);
+  const stats = useRef<HTMLSpanElement>(null);
   const [bridge] = useState(() => embedBridge(venue));
   const initialSeat =
     bowl.seats[bowl.seatIndexById.get(query.get("seat") ?? "") ?? -1];
@@ -239,6 +250,22 @@ function Stadium({
   const tag = useRef<HTMLOutputElement>(null);
   const active = groups.find((group) => group.stand.id === hover);
   const { day, time } = kickoff(venue);
+  const standPrices = active?.blocks
+    .filter((b) => left.has(b.id))
+    .map((b) => venue.pricing.tiers[b.tierId][b.standId]);
+  const standFrom = standPrices?.length ? Math.min(...standPrices) : null;
+  const vipLeft = vipAvailable.some(Boolean);
+  const phase = done
+    ? "done"
+    : vip
+      ? vip.index === null
+        ? "vip"
+        : "vip-seat"
+      : selected
+        ? "seat"
+        : block
+          ? "block"
+          : "overview";
   return (
     <main
       className="overview"
@@ -269,6 +296,8 @@ function Stadium({
         entry={entry}
         duration={view ? 0.8 : undefined}
         blockPose={block?.flyIn}
+        stats={query.has("debug") ? stats : undefined}
+        onReady={() => setReady(true)}
       >
         <MatchNight venue={venue} />
         {venue.shell ? (
@@ -358,14 +387,7 @@ function Stadium({
             <small>From</small>
             <strong>{active.stand.label}</strong>
             <span style={{ color: venue.branding.accent }}>
-              {money(
-                venue,
-                Math.min(
-                  ...active.blocks
-                    .filter((b) => left.has(b.id))
-                    .map((b) => venue.pricing.tiers[b.tierId][b.standId]),
-                ),
-              )}
+              {standFrom === null ? "Sold out" : money(venue, standFrom)}
             </span>
           </>
         )}
@@ -375,8 +397,10 @@ function Stadium({
           <button onClick={back}>Back</button>
           <strong>Block {block.id}</strong>
           <span>
-            {left.get(block.id) ?? 0} left ·{" "}
-            {money(venue, venue.pricing.tiers[block.tierId][block.standId])}
+            {left.get(block.id)
+              ? `${left.get(block.id)} left · ` +
+                money(venue, venue.pricing.tiers[block.tierId][block.standId])
+              : "Sold out · try a neighbouring block"}
           </span>
         </section>
       )}
@@ -391,6 +415,7 @@ function Stadium({
           pick={(index) => changeVip({ index })}
           embedded={!!bridge}
           available={vipAvailable}
+          vipLeft={vipLeft}
           done={done}
           keep={() => {
             const payload = seatPayload(venue, selected);
@@ -448,6 +473,15 @@ function Stadium({
             : "Drag to orbit · Scroll to zoom · Click a block"}
       </footer>
       {venue.shell?.credit && <aside>{venue.shell.credit}</aside>}
+      <Loading ready={ready} name={venue.name} />
+      {query.has("debug") && (
+        <pre className="debug" aria-label="Debug stats">
+          <span ref={stats}>…</span>
+          {"\n"}phase {phase} · stand {hover ?? "–"} · block {block?.id ?? "–"}{" "}
+          · seat {(selected ?? seat)?.id ?? "–"}
+          {vip ? ` · vip ${vip.index ?? "–"}` : ""}
+        </pre>
+      )}
     </main>
   );
 }

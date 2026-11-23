@@ -14,6 +14,7 @@ import {
 import type { VenueConfig } from "../venue/schema";
 import { kickoff } from "../venue/format";
 import { boardTexture } from "./Stand";
+import { useQuality } from "../quality";
 
 function turf({ width, length, kind }: VenueConfig["pitch"]) {
   const canvas = document.createElement("canvas");
@@ -88,6 +89,7 @@ function precinct() {
 
 export function MatchNight({ venue }: { venue: VenueConfig }) {
   const pitch = useMemo(() => turf(venue.pitch), [venue.pitch]);
+  const quality = useQuality((q) => q.level);
   const apron = useMemo(precinct, []);
   useEffect(() => () => apron.dispose(), [apron]);
   const screen = useMemo(() => {
@@ -191,11 +193,14 @@ export function MatchNight({ venue }: { venue: VenueConfig }) {
           ))}
         </group>
       ))}
-      <EffectComposer multisampling={0}>
-        <Bloom luminanceThreshold={1} intensity={0.5} mipmapBlur />
-        <Vignette darkness={0.36} />
-        <SMAA />
-      </EffectComposer>
+      {/* The lowest quality level drops post-processing (bloom, vignette, SMAA). */}
+      {quality > 0 && (
+        <EffectComposer multisampling={0}>
+          <Bloom luminanceThreshold={1} intensity={0.5} mipmapBlur />
+          <Vignette darkness={0.36} />
+          <SMAA />
+        </EffectComposer>
+      )}
     </>
   );
 }

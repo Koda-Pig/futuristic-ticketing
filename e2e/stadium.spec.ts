@@ -79,6 +79,8 @@ for (const tier of ["lower", "upper"])
     await page.setViewportSize({ width: 960, height: 640 });
     await page.goto("/");
     await expect(page.locator("canvas[data-ready]")).toBeVisible();
+    // The loader covers the canvas until the first frame (and shows the shell's progress).
+    await expect(page.getByRole("status")).toHaveCount(0, { timeout: 30000 });
     const venue = venueSchema.parse(
       await (await page.request.get("/venues/cape-point/venue.json")).json(),
     );

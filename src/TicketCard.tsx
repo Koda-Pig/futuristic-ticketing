@@ -5,6 +5,7 @@ import type { VenueConfig } from "./venue/schema";
 export function TicketCard({
   venue,
   available,
+  vipLeft,
   embedded,
   seat,
   snapshot,
@@ -18,6 +19,7 @@ export function TicketCard({
 }: {
   venue: VenueConfig;
   available: boolean[];
+  vipLeft: boolean;
   embedded: boolean;
   seat: Seat;
   snapshot: string;
@@ -152,9 +154,14 @@ export function TicketCard({
           </p>
         ) : (
           <>
-            <button className="upgrade" disabled={!box} onClick={upgrade}>
-              Upgrade · +{money(venue, venue.pricing.vip.pricePerSeat - price)}
-            </button>
+            {box && (
+              <button className="upgrade" disabled={!vipLeft} onClick={upgrade}>
+                {vipLeft
+                  ? "Upgrade · +" +
+                    money(venue, venue.pricing.vip.pricePerSeat - price)
+                  : "VIP sold out"}
+              </button>
+            )}
             <button onClick={keep}>Keep my seat</button>
           </>
         )}

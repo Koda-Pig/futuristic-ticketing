@@ -230,3 +230,100 @@
     }
   }
 }
+.loading,
+.notice {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 14px;
+  padding: 24px;
+  text-align: center;
+  background: #10151c;
+  color: #e8edf5;
+  font:
+    14px/1.45 Inter,
+    system-ui,
+    sans-serif;
+}
+.loading strong {
+  font-size: 13px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #c5d2d6;
+}
+.loading progress,
+.loading-bar progress {
+  appearance: none;
+  width: 220px;
+  height: 3px;
+  border: 0;
+  border-radius: 2px;
+  background: #ffffff1f;
+  accent-color: var(--accent, #ffa650);
+}
+.loading progress::-webkit-progress-bar,
+.loading-bar progress::-webkit-progress-bar {
+  background: #ffffff1f;
+}
+.loading-bar progress::-webkit-progress-value {
+  background: var(--accent, #ffa650);
+}
+.loading-bar progress::-moz-progress-bar {
+  background: var(--accent, #ffa650);
+}
+.loading-bar {
+  position: absolute;
+  top: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+  font-size: 11px;
+  color: #bdc8cc;
+  pointer-events: none;
+}
+.notice h1 {
+  margin: 0;
+  font-size: 22px;
+  letter-spacing: -0.02em;
+}
+.notice p {
+  margin: 0;
+  max-width: 36ch;
+  color: #bdc8cc;
+}
+.notice button {
+  background: #293a42;
+  color: white;
+  border: 1px solid #70858d;
+  border-radius: 4px;
+  padding: 8px 16px;
+  font: inherit;
+  cursor: pointer;
+}
+.notice details {
+  max-width: min(640px, 90vw);
+  text-align: left;
+  color: #bdc8cc;
+}
+.notice pre {
+  white-space: pre-wrap;
+  font-size: 12px;
+}
+.debug {
+  position: absolute;
+  top: 120px;
+  left: 24px;
+  margin: 0;
+  padding: 6px 10px;
+  border-radius: 4px;
+  background: #000a;
+  color: #9ef0b4;
+  font:
+    11px/1.5 ui-monospace,
+    monospace;
+  pointer-events: none;
+}
