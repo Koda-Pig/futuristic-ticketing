@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+  <meta charset="utf-8" />
+  <title>Stadium embed test</title>
+  <h1>Stadium embed test</h1>
+  <div id="stadium"></div>
+  <button onclick="window.StadiumEmbed.reset()">Reset selection</button>
+  <pre id="events" aria-live="polite"></pre>
+  <script>
+    for (const type of ["ready", "seatSelected", "checkout"])
+      window.addEventListener("stadium:" + type, (e) => {
+        document.querySelector("#events").textContent +=
+          type + " " + JSON.stringify(e.detail) + "\n";
+      });
+  </script>
+  <script
+    src="/embed.js"
+    data-target="#stadium"
+    data-venue="riverside"
+  ></script>
+</html>

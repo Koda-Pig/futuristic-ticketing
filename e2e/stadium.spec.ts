@@ -203,3 +203,72 @@ for (const tier of ["lower", "upper"])
     await panel.getByRole("button", { name: "Back" }).click();
     await expect(panel).toBeHidden();
   });
+
+test("Riverside embed restores a seat, hands off both checkout prices and resets", async ({
+  page,
+  baseURL,
+}) => {
+  test.setTimeout(120000);
+  const host = "http://localhost:5173/embed-test.html";
+  const html = await (await page.request.get("/embed-test.html")).text();
+  await page.route(host, (route) =>
+    route.fulfill({
+      contentType: "text/html",
+      body: html.replace('src="/embed.js"', `src="${baseURL}/embed.js"`),
+    }),
+  );
+  const venue = venueSchema.parse(
+    await (await page.request.get("/venues/riverside/venue.json")).json(),
+  );
+  const bowl = generateBowl(venue);
+  const sold = soldSeats(bowl, venue.availability);
+  const seat = bowl.seats.find((s) => !sold.has(s.id))!;
+  await page.context().grantPermissions(["local-network-access"], {
+    origin: new URL(host).origin,
+  });
+  await page.goto(host);
+  const events = page.locator("#events");
+  await expect(events).toContainText("ready", { timeout: 30000 });
+  const frame = page.frames().find((f) => f.parentFrame())!;
+  const url = new URL(frame.url());
+  url.searchParams.set("seat", seat.id);
+  await frame.goto(url.href, { referer: host });
+  const payload = {
+    venueId: venue.id,
+    eventId: venue.event.id,
+    seatId: seat.id,
+    block: seat.blockId,
+    row: seat.row,
+    seat: seat.seat,
+    tier: seat.tierId,
+    stand: seat.standId,
+    gate: "L1",
+    price: venue.pricing.tiers[seat.tierId][seat.standId],
+    currency: "GBP",
+  };
+  await expect(events).toContainText("seatSelected " + JSON.stringify(payload));
+  await frame.getByRole("button", { name: "Keep my seat" }).click();
+  await expect(events).toContainText(
+    "checkout " + JSON.stringify({ ...payload, vip: false }),
+  );
+  await expect(frame.getByText("Continuing to checkout…")).toBeVisible();
+  await frame.getByRole("button", { name: "Back", exact: true }).click();
+  await frame.getByRole("button", { name: /Upgrade/ }).click();
+  const chair = frame.locator("fieldset button:enabled").first();
+  const index = Number(await chair.textContent()) - 1;
+  await chair.click();
+  await frame.getByRole("button", { name: "Confirm VIP" }).click();
+  await expect(events).toContainText(
+    "checkout " +
+      JSON.stringify({
+        ...payload,
+        price: venue.pricing.vip.pricePerSeat,
+        vip: true,
+        boxId: venue.vipBoxes[0].id,
+        vipSeatIndex: index,
+      }),
+  );
+  await page.getByRole("button", { name: "Reset selection" }).click();
+  await expect(frame.locator(".block-panel")).toHaveCount(0);
+  expect(new URL(frame.url()).searchParams.has("seat")).toBe(false);
+});

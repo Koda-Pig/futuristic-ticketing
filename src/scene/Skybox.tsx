@@ -34,9 +34,6 @@ export function vipView(box: VipBox, index: number | null) {
     eye: worldPoint(box, [x, y + (index === null ? 0 : 1.06), z]),
   };
 }
-export function vipSold(box: VipBox, seed: number, i: number) {
-  return (i + Math.abs(seed)) % 3 === 0 && box.seats > 1;
-}
 function Slab({ at, size, color }: { at: Point; size: Point; color: string }) {
   return (
     <mesh position={at}>
@@ -48,12 +45,14 @@ function Slab({ at, size, color }: { at: Point; size: Point; color: string }) {
 export function Skybox({
   box,
   index,
-  seed,
+  available,
+  accent,
   pick,
 }: {
   box: VipBox;
   index: number | null;
-  seed: number;
+  available: boolean[];
+  accent: string;
   pick: (i: number) => void;
 }) {
   const [hover, setHover] = useState<number | null>(null);
@@ -93,8 +92,8 @@ export function Skybox({
         />
       </mesh>
       {Array.from({ length: box.seats }, (_, i) => {
-        const taken = vipSold(box, seed, i);
-        const color = index === i ? "#ff832b" : taken ? "#453e3a" : "#27232b";
+        const taken = !available[i];
+        const color = index === i ? accent : taken ? "#453e3a" : "#27232b";
         return (
           <group
             key={i}
@@ -120,9 +119,7 @@ export function Skybox({
                 key={side}
                 at={[side * 0.4, 0.52, 0]}
                 size={[0.12, 0.25, 0.8]}
-                color={
-                  hover === i && !taken && index === null ? "#ff832b" : color
-                }
+                color={hover === i && !taken && index === null ? accent : color}
               />
             ))}
           </group>

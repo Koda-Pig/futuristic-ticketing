@@ -1,10 +1,11 @@
-import { vipSold } from "./scene/Skybox";
 import type { Seat } from "./venue/generateBowl";
 import { money } from "./venue/format";
 import type { VenueConfig } from "./venue/schema";
 
 export function TicketCard({
   venue,
+  available,
+  embedded,
   seat,
   snapshot,
   done,
@@ -16,6 +17,8 @@ export function TicketCard({
   pick,
 }: {
   venue: VenueConfig;
+  available: boolean[];
+  embedded: boolean;
   seat: Seat;
   snapshot: string;
   done: boolean;
@@ -64,7 +67,7 @@ export function TicketCard({
                 {Array.from({ length: box.seats }, (_, i) => (
                   <button
                     key={i}
-                    disabled={vipSold(box, venue.availability.seed, i)}
+                    disabled={!available[i]}
                     aria-label={"VIP seat " + (i + 1)}
                     onClick={() => pick(i)}
                   >
@@ -77,7 +80,13 @@ export function TicketCard({
                 Confirm VIP
               </button>
             ))}
-          {done && <p>Demo: checkout hands off to your ticketing provider.</p>}
+          {done && (
+            <p>
+              {embedded
+                ? "Continuing to checkout…"
+                : "Demo: checkout hands off to your ticketing provider."}
+            </p>
+          )}
           <button onClick={done ? choose : standard}>
             {done ? "Choose another seat" : "Back to standard seat"}
           </button>
@@ -136,7 +145,11 @@ export function TicketCard({
           <strong>{money(venue, price)}</strong>
         </div>
         {done ? (
-          <p>Demo: checkout hands off to your ticketing provider.</p>
+          <p>
+            {embedded
+              ? "Continuing to checkout…"
+              : "Demo: checkout hands off to your ticketing provider."}
+          </p>
         ) : (
           <>
             <button className="upgrade" disabled={!box} onClick={upgrade}>

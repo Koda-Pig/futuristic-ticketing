@@ -1,0 +1,122 @@
+{
+  "id": "riverside",
+  "name": "Riverside Ground",
+  "branding": {
+    "accent": "#79d648",
+    "accentOn": "#10151c"
+  },
+  "locale": "en-GB",
+  "currency": "GBP",
+  "event": {
+    "id": "river-2027-04-10",
+    "home": "River Vale",
+    "away": "Moorland Athletic",
+    "startsAt": "2027-04-10T15:00:00+01:00",
+    "sport": "football"
+  },
+  "pitch": {
+    "length": 105,
+    "width": 68,
+    "kind": "football"
+  },
+  "outline": {
+    "halfLength": 62.5,
+    "halfWidth": 43,
+    "exponent": 5
+  },
+  "tiers": [
+    {
+      "id": "lower",
+      "label": "Lower Tier",
+      "offset": 0,
+      "baseHeight": 1.15,
+      "rows": 12,
+      "rowDepth": 0.8,
+      "riser": 0.36,
+      "seatWidth": 0.5,
+      "gateLetter": "L"
+    },
+    {
+      "id": "upper",
+      "label": "Upper Tier",
+      "offset": 11,
+      "baseHeight": 6,
+      "rows": 10,
+      "rowDepth": 0.8,
+      "riser": 0.44,
+      "seatWidth": 0.5,
+      "gateLetter": "U"
+    }
+  ],
+  "stands": [
+    {
+      "id": "east",
+      "label": "East Stand",
+      "from": -53,
+      "to": 53
+    },
+    {
+      "id": "south",
+      "label": "South Stand",
+      "from": 53,
+      "to": 127
+    },
+    {
+      "id": "west",
+      "label": "West Stand",
+      "from": 127,
+      "to": 233
+    }
+  ],
+  "blocks": {
+    "perStandPerTier": {
+      "east": 5,
+      "south": 5,
+      "west": 5
+    },
+    "aisleWidth": 1.2,
+    "numbering": "stadium"
+  },
+  "pricing": {
+    "tiers": {
+      "lower": {
+        "east": 50,
+        "south": 40,
+        "west": 50
+      },
+      "upper": {
+        "east": 40,
+        "south": 30,
+        "west": 40
+      }
+    },
+    "vip": {
+      "pricePerSeat": 145,
+      "label": "VIP Skybox"
+    }
+  },
+  "vipBoxes": [
+    {
+      "id": "river-suite",
+      "label": "River Suite",
+      "level": 2,
+      "position": [67, 12, 0],
+      "rotationY": -1.5707963267948966,
+      "size": [6, 3, 4],
+      "seats": 8
+    }
+  ],
+  "cameras": {
+    "overview": {
+      "position": [-143, 116, 163],
+      "target": [0, 4, 0]
+    }
+  },
+  "availability": {
+    "seed": 42,
+    "soldRatio": [0.6, 0.85]
+  },
+  "embed": {
+    "allowedOrigins": ["http://localhost:5173", "http://127.0.0.1:5173"]
+  }
+}

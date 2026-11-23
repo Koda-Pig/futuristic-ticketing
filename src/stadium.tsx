@@ -7,7 +7,9 @@ import { Crowd } from "./scene/Crowd";
 import { TicketCard } from "./TicketCard";
 import { BlockSeats } from "./scene/BlockSeats";
 import { SeatPreview } from "./scene/SeatPreview";
-import { soldSeats } from "./venue/availability";
+import { MockDataSource } from "./venue/dataSource";
+import { embedBridge, seatPayload } from "./embed/bridge";
+import { ProceduralShell } from "./scene/ProceduralShell";
 import type { Block, Seat } from "./venue/generateBowl";
 import { Stand } from "./scene/Stand";
 import { kickoff, money } from "./venue/format";
@@ -17,26 +19,24 @@ import { Bowl } from "./scene/Bowl";
 import { Shell } from "./scene/Shell";
 import { Stage } from "./scene/Stage";
 import { generateBowl } from "./venue/generateBowl";
-import { type VenueConfig, venueSchema } from "./venue/schema";
+import { type VenueConfig } from "./venue/schema";
 
-export const VENUE_URL = "/venues/cape-point/venue.json";
-
-export async function loadVenue(url = VENUE_URL) {
-  const response = await fetch(url);
-  if (!response.ok)
-    throw new Error(`Venue request returned HTTP ${response.status}`);
-  return venueSchema.parse(await response.json());
-}
-
+const source = new MockDataSource();
 /** Loads the venue, then renders `render(venue)` or a developer error. */
 export async function mountVenue(
   root: HTMLElement,
-  render: (venue: VenueConfig) => React.ReactNode,
+  render: (venue: VenueConfig) => React.ReactNode | Promise<React.ReactNode>,
 ) {
   const reactRoot = createRoot(root);
-  let venue: VenueConfig;
   try {
-    venue = await loadVenue();
+    const query = new URLSearchParams(location.search);
+    const venue = await source.getVenue(query.get("venue") ?? "cape-point");
+    if (query.has("event") && query.get("event") !== venue.event.id)
+      throw new Error("Unknown event");
+    document.title = query.has("calibrate")
+      ? venue.name + " · Calibrate"
+      : venue.name;
+    reactRoot.render(await render(venue));
   } catch (error) {
     const message =
       error instanceof z.ZodError ? z.prettifyError(error) : String(error);
@@ -48,14 +48,51 @@ export async function mountVenue(
     );
     return;
   }
-  reactRoot.render(render(venue));
 }
 
 export const mount = (root: HTMLElement) =>
-  mountVenue(root, (venue) => <Stadium venue={venue} />);
+  mountVenue(root, async (venue) => {
+    const bowl = generateBowl(venue);
+    const box = venue.vipBoxes[0];
+    const [availability, vipAvailable] = await Promise.all([
+      source.getAvailability(venue.event.id, bowl),
+      box
+        ? source.getVipAvailability(venue.event.id, box.id)
+        : Promise.resolve([]),
+    ]);
+    const sold = new Set(
+      [...availability]
+        .filter(([, status]) => status === "sold")
+        .map(([id]) => id),
+    );
+    return (
+      <Stadium
+        venue={venue}
+        bowl={bowl}
+        sold={sold}
+        vipAvailable={vipAvailable}
+      />
+    );
+  });
 
-function Stadium({ venue }: { venue: VenueConfig }) {
-  const bowl = useMemo(() => generateBowl(venue), [venue]);
+function Stadium({
+  venue,
+  bowl,
+  sold,
+  vipAvailable,
+}: {
+  venue: VenueConfig;
+  bowl: ReturnType<typeof generateBowl>;
+  sold: Set<string>;
+  vipAvailable: boolean[];
+}) {
+  const [query] = useState(() => new URLSearchParams(location.search));
+  const [bridge] = useState(() => embedBridge(venue));
+  const initialSeat =
+    bowl.seats[bowl.seatIndexById.get(query.get("seat") ?? "") ?? -1];
+  const initialBlock = bowl.blocks.find(
+    (b) => b.id === (query.get("block") ?? initialSeat?.blockId),
+  );
   const groups = useMemo(
     () =>
       venue.stands
@@ -67,17 +104,38 @@ function Stadium({ venue }: { venue: VenueConfig }) {
     [bowl, venue],
   );
   const [hover, setHover] = useState<string | null>(null);
-  const [block, setBlock] = useState<Block | null>(null);
+  const [block, setBlock] = useState<Block | null>(initialBlock ?? null);
   const [seat, setSeat] = useState<Seat | null>(null);
-  const [selected, setSelected] = useState<Seat | null>(null);
+  const [selected, setSelected] = useState<Seat | null>(
+    initialSeat &&
+      initialBlock?.id === initialSeat.blockId &&
+      !sold.has(initialSeat.id)
+      ? initialSeat
+      : null,
+  );
   const [snapshot, setSnapshot] = useState("");
-  const [done, setDone] = useState(false);
+
   // `enter` is set only on the upgrade, so going back to the picker from a
   // chosen VIP seat doesn't replay the fly-in from outside the box.
   const [vip, setVip] = useState<{
     index: number | null;
     enter?: boolean;
-  } | null>(null);
+  } | null>(() => {
+    if (
+      !selected ||
+      !venue.vipBoxes[0] ||
+      query.get("box") !== venue.vipBoxes[0].id
+    )
+      return null;
+    const value = query.get("vipSeat");
+    const index = value && /^\d+$/.test(value) ? Number(value) : null;
+    return { index: index !== null && vipAvailable[index] ? index : null };
+  });
+  const [done, setDone] = useState(
+    !!selected &&
+      query.get("done") === "1" &&
+      (!query.has("box") || (vip !== null && vip.index !== null)),
+  );
   const [vipSnapshot, setVipSnapshot] = useState("");
   const box = venue.vipBoxes[0];
   const view = useMemo(
@@ -97,10 +155,45 @@ function Stadium({ venue }: { venue: VenueConfig }) {
   }
   const [rejections, reject] = useState(0);
   const preview = useRef<HTMLCanvasElement>(null);
-  const sold = useMemo(
-    () => soldSeats(bowl, venue.availability),
-    [bowl, venue],
-  );
+  useEffect(() => {
+    const url = new URL(location.href);
+    const values = {
+      block: block?.id,
+      seat: selected?.id,
+      box: vip ? box?.id : undefined,
+      vipSeat: vip?.index,
+      done: done ? 1 : undefined,
+    };
+    for (const [key, value] of Object.entries(values)) {
+      if (value == null) url.searchParams.delete(key);
+      else url.searchParams.set(key, String(value));
+    }
+    history.replaceState(history.state, "", url);
+  }, [block, selected, vip, box, done]);
+  useEffect(() => {
+    const unsubscribe = bridge?.onReset(() => {
+      setBlock(null);
+      setSeat(null);
+      setSelected(null);
+      setDone(false);
+      setSnapshot("");
+      changeVip(null);
+      setHover(null);
+      reject(0);
+    });
+    bridge?.send("ready", { venueId: venue.id, eventId: venue.event.id });
+    return unsubscribe;
+  }, [bridge, venue]);
+  useEffect(() => {
+    if (selected) bridge?.send("seatSelected", seatPayload(venue, selected));
+  }, [bridge, selected, venue]);
+  const left = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const seat of bowl.seats)
+      if (!sold.has(seat.id))
+        counts.set(seat.blockId, (counts.get(seat.blockId) ?? 0) + 1);
+    return counts;
+  }, [bowl, sold]);
   const nearby = useMemo(() => {
     if (!block) return [];
     const tier = bowl.blocks.filter((b) => b.tierId === block.tierId);
@@ -150,6 +243,12 @@ function Stadium({ venue }: { venue: VenueConfig }) {
     <main
       className="overview"
       aria-label={venue.name}
+      style={
+        {
+          "--accent": venue.branding.accent,
+          "--accent-on": venue.branding.accentOn,
+        } as React.CSSProperties
+      }
       onPointerLeave={() => {
         setHover(null);
         setSeat(null);
@@ -172,10 +271,12 @@ function Stadium({ venue }: { venue: VenueConfig }) {
         blockPose={block?.flyIn}
       >
         <MatchNight venue={venue} />
-        {venue.shell && (
+        {venue.shell ? (
           <Suspense fallback={null}>
             <Shell opening={vip ? box : undefined} shell={venue.shell} />
           </Suspense>
+        ) : (
+          <ProceduralShell bowl={bowl} />
         )}
         {nearby.map((b) => (
           <BlockSeats
@@ -205,7 +306,8 @@ function Stadium({ venue }: { venue: VenueConfig }) {
         {vip && box && (
           <Skybox
             box={box}
-            seed={venue.availability.seed}
+            available={vipAvailable}
+            accent={venue.branding.accent}
             index={vip.index}
             pick={(index) => changeVip({ index })}
           />
@@ -259,9 +361,9 @@ function Stadium({ venue }: { venue: VenueConfig }) {
               {money(
                 venue,
                 Math.min(
-                  ...active.blocks.map(
-                    (b) => venue.pricing.tiers[b.tierId][b.standId],
-                  ),
+                  ...active.blocks
+                    .filter((b) => left.has(b.id))
+                    .map((b) => venue.pricing.tiers[b.tierId][b.standId]),
                 ),
               )}
             </span>
@@ -272,6 +374,10 @@ function Stadium({ venue }: { venue: VenueConfig }) {
         <section className="block-panel">
           <button onClick={back}>Back</button>
           <strong>Block {block.id}</strong>
+          <span>
+            {left.get(block.id) ?? 0} left ·{" "}
+            {money(venue, venue.pricing.tiers[block.tierId][block.standId])}
+          </span>
         </section>
       )}
       {selected && (
@@ -283,8 +389,25 @@ function Stadium({ venue }: { venue: VenueConfig }) {
           upgrade={() => changeVip({ index: null, enter: true })}
           standard={() => changeVip(null)}
           pick={(index) => changeVip({ index })}
+          embedded={!!bridge}
+          available={vipAvailable}
           done={done}
-          keep={() => setDone(true)}
+          keep={() => {
+            const payload = seatPayload(venue, selected);
+            bridge?.send(
+              "checkout",
+              vip && vip.index !== null
+                ? {
+                    ...payload,
+                    vip: true,
+                    boxId: box.id,
+                    vipSeatIndex: vip.index,
+                    price: venue.pricing.vip.pricePerSeat,
+                  }
+                : { ...payload, vip: false },
+            );
+            setDone(true);
+          }}
           choose={() => {
             changeVip(null);
             setDone(false);
