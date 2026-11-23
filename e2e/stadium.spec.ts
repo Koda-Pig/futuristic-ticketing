@@ -19,3 +19,10 @@ test("opens the shell inspector bookmark", async ({ page }) => {
   await page.goto("/?debug=shell");
   await expect(page.getByRole("button", { name: "Sideline" })).toBeVisible();
 });
+
+test("opens the calibration page with the generated bowl", async ({ page }) => {
+  await page.goto("/?calibrate");
+  await expect(page.locator("main canvas[data-ready]")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Export JSON" })).toBeVisible();
+  await expect(page.getByText(/\d{2},\d{3} seats · \d+ blocks/)).toBeVisible();
+});

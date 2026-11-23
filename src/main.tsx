@@ -8,6 +8,13 @@ if (isInspectorMode(location.search)) {
   root.innerHTML = markup;
   document.title = "Cape Point Stadium · Model inspector";
   await import("./inspector.js");
+} else if (new URLSearchParams(location.search).has("calibrate")) {
+  const [{ mountVenue }, { Calibrate }] = await Promise.all([
+    import("./stadium"),
+    import("./dev/Calibrate"),
+  ]);
+  document.title = "Cape Point Stadium · Calibrate";
+  await mountVenue(root, (venue) => <Calibrate initial={venue} />);
 } else {
   const { mount } = await import("./stadium");
   await mount(root);

@@ -28,6 +28,9 @@ export const venueSchema = z
       sport,
     }),
     pitch: z.strictObject({ length: positive, width: positive, kind: sport }),
+    // Superellipse |x/halfWidth|^n + |z/halfLength|^n = 1 through the centre
+    // of the front row's tread. The pitch runs north-south, along Z. Rows are
+    // offsets of this curve along its normal.
     outline: z.strictObject({
       halfLength: positive,
       halfWidth: positive,
@@ -38,9 +41,14 @@ export const venueSchema = z
         z.strictObject({
           id: name,
           label: name,
+          // Distance from the outline to this tier's front row, in metres.
           offset: z.number().nonnegative(),
+          // Floor (tread) height of the tier's front row; seat pans sit above it.
           baseHeight: z.number(),
           rows: count,
+          // Stands with a different row count, e.g. ends that rake further back.
+          // 0 leaves the stand empty in this tier.
+          rowsByStand: z.record(name, z.int().nonnegative()).optional(),
           rowDepth: positive,
           riser: positive,
           seatWidth: positive,
@@ -53,6 +61,7 @@ export const venueSchema = z
         z.strictObject({
           id: name,
           label: name,
+          // Polar angle in degrees: 0° = +X (east), 90° = +Z (south).
           from: z.number(),
           to: z.number(),
         }),
@@ -63,6 +72,18 @@ export const venueSchema = z
       aisleWidth: positive,
       numbering: z.literal("stadium"),
     }),
+    // Plan-view rectangles [minX, minZ, maxX, maxZ] that get no seats:
+    // vomitories, stair landings and other gaps in the shell's terraces.
+    voids: z
+      .array(
+        z
+          .tuple([z.number(), z.number(), z.number(), z.number()])
+          .refine(
+            ([minX, minZ, maxX, maxZ]) => minX < maxX && minZ < maxZ,
+            "Expected [minX, minZ, maxX, maxZ]",
+          ),
+      )
+      .default([]),
     pricing: z.strictObject({
       tiers: z.record(name, z.record(name, price)),
       vip: z.strictObject({ pricePerSeat: price, label: name }),
@@ -123,7 +144,33 @@ export const venueSchema = z
       venue.vipBoxes.map((box) => box.id),
       "vipBoxes",
     );
+    const standIds = new Set(venue.stands.map((stand) => stand.id));
+    venue.tiers.forEach((tier, index) => {
+      for (const standId of Object.keys(tier.rowsByStand ?? {}))
+        if (!standIds.has(standId))
+          ctx.addIssue({
+            code: "custom",
+            path: ["tiers", index, "rowsByStand", standId],
+            message: "Unknown stand",
+          });
+    });
+    const blocksPerTier = venue.stands.reduce(
+      (sum, stand) => sum + (venue.blocks.perStandPerTier[stand.id] ?? 0),
+      0,
+    );
+    if (blocksPerTier > 99)
+      ctx.addIssue({
+        code: "custom",
+        path: ["blocks", "perStandPerTier"],
+        message: `Block numbers have two digits per tier; ${blocksPerTier} blocks do not fit`,
+      });
     venue.stands.forEach((stand, index) => {
+      if (stand.to - stand.from > 360)
+        ctx.addIssue({
+          code: "custom",
+          path: ["stands", index, "to"],
+          message: "A stand spans at most 360°",
+        });
       if (stand.to <= stand.from)
         ctx.addIssue({
           code: "custom",
