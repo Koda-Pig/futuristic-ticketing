@@ -34,6 +34,36 @@ function repairNormals(geometry: BufferGeometry) {
   if (repaired) normal.needsUpdate = true;
 }
 
+type Box = Pick<
+  NonNullable<Props["opening"]>,
+  "position" | "rotationY" | "size"
+>;
+/** A box no camera can see, so planes around it clip nothing visible. */
+const NOWHERE: Box = { position: [0, -1e4, 0], rotationY: 0, size: [0, 0, 0] };
+
+/** Points `planes` (six, reused) at the faces of `box`, 0.2 m outside them. */
+function placeBox(planes: Plane[], box: Box) {
+  const center = new Vector3(...box.position);
+  center.y += box.size[1] / 2;
+  const up = new Vector3(0, 1, 0);
+  [
+    [1, 0, 0],
+    [0, 1, 0],
+    [0, 0, 1],
+  ].forEach((axis, i) =>
+    [-1, 1].forEach((sign, j) => {
+      const normal = new Vector3()
+        .fromArray(axis)
+        .applyAxisAngle(up, box.rotationY)
+        .multiplyScalar(sign);
+      planes[i * 2 + j].setFromNormalAndCoplanarPoint(
+        normal,
+        center.clone().addScaledVector(normal, box.size[i] / 2 + 0.2),
+      );
+    }),
+  );
+}
+
 type Props = {
   opening?: VenueConfig["vipBoxes"][number];
   shell: NonNullable<VenueConfig["shell"]>;
@@ -75,26 +105,16 @@ export function Shell({ shell, opening, opacity = 1, roofFade = true }: Props) {
   );
 
   const gl = useThree((state) => state.gl);
+  const invalidate = useThree((state) => state.invalidate);
+  // Clipping is on from the start with six planes that cut nothing (a tiny
+  // box far below the ground). Opening a skybox only moves the planes:
+  // toggling clipping instead would recompile every shell material, which
+  // froze the upgrade for over a minute in software rendering.
+  const planes = useMemo(
+    () => Array.from({ length: 6 }, () => new Plane()),
+    [],
+  );
   useLayoutEffect(() => {
-    if (!opening) return;
-    const center = new Vector3(...opening.position);
-    center.y += opening.size[1] / 2;
-    const planes = [
-      [1, 0, 0],
-      [0, 1, 0],
-      [0, 0, 1],
-    ].flatMap((axis, i) =>
-      [-1, 1].map((sign) => {
-        const normal = new Vector3()
-          .fromArray(axis)
-          .applyAxisAngle(new Vector3(0, 1, 0), opening.rotationY)
-          .multiplyScalar(sign);
-        return new Plane().setFromNormalAndCoplanarPoint(
-          normal,
-          center.clone().addScaledVector(normal, opening.size[i] / 2 + 0.2),
-        );
-      }),
-    );
     const previous = gl.localClippingEnabled;
     gl.localClippingEnabled = true;
     for (const material of materials) {
@@ -110,7 +130,11 @@ export function Shell({ shell, opening, opacity = 1, roofFade = true }: Props) {
         material.needsUpdate = true;
       }
     };
-  }, [gl, materials, opening]);
+  }, [gl, materials, planes]);
+  useLayoutEffect(() => {
+    placeBox(planes, opening ?? NOWHERE);
+    invalidate();
+  }, [planes, opening, invalidate]);
 
   const setOpacity = (roof: number) => {
     for (const material of materials) {
@@ -125,7 +149,6 @@ export function Shell({ shell, opening, opacity = 1, roofFade = true }: Props) {
       material.opacity = value;
     }
   };
-  const invalidate = useThree((state) => state.invalidate);
   useLayoutEffect(() => {
     setOpacity(1);
     // The GLB arrives after the first frame; draw it with frameloop="demand".
