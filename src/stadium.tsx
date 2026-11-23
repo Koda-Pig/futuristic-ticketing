@@ -2,6 +2,8 @@ import { createRoot } from "react-dom/client";
 import { useEffect, useMemo, useRef, useState, Suspense } from "react";
 import { z } from "zod";
 
+import { Crowd } from "./scene/Crowd";
+import { TicketCard } from "./TicketCard";
 import { BlockSeats } from "./scene/BlockSeats";
 import { SeatPreview } from "./scene/SeatPreview";
 import { soldSeats } from "./venue/availability";
@@ -67,6 +69,8 @@ function Stadium({ venue }: { venue: VenueConfig }) {
   const [block, setBlock] = useState<Block | null>(null);
   const [seat, setSeat] = useState<Seat | null>(null);
   const [selected, setSelected] = useState<Seat | null>(null);
+  const [snapshot, setSnapshot] = useState("");
+  const [done, setDone] = useState(false);
   const [rejections, reject] = useState(0);
   const preview = useRef<HTMLCanvasElement>(null);
   const sold = useMemo(
@@ -98,8 +102,11 @@ function Stadium({ venue }: { venue: VenueConfig }) {
     [bowl, nearby],
   );
   function back() {
-    if (selected) setSelected(null);
-    else setBlock(null);
+    if (done) setDone(false);
+    else if (selected) {
+      setSelected(null);
+      setSnapshot("");
+    } else setBlock(null);
     setSeat(null);
     setHover(null);
   }
@@ -109,7 +116,7 @@ function Stadium({ venue }: { venue: VenueConfig }) {
     };
     window.addEventListener("keydown", escape);
     return () => window.removeEventListener("keydown", escape);
-  }, [selected]);
+  }, [selected, done]);
   const shown = selected ?? seat;
   const tag = useRef<HTMLOutputElement>(null);
   const active = groups.find((group) => group.stand.id === hover);
@@ -131,7 +138,7 @@ function Stadium({ venue }: { venue: VenueConfig }) {
         }
       }}
     >
-      <Stage venue={venue} overview blockPose={block?.flyIn}>
+      <Stage venue={venue} overview seat={selected} blockPose={block?.flyIn}>
         <MatchNight venue={venue} />
         {venue.shell && (
           <Suspense fallback={null}>
@@ -156,7 +163,20 @@ function Stadium({ venue }: { venue: VenueConfig }) {
             }}
           />
         ))}
-        {shown && <SeatPreview seat={shown} canvas={preview} />}
+        {selected && sold.size > 0 && (
+          <Crowd
+            seats={bowl.seats}
+            sold={sold}
+            accent={venue.branding.accent}
+          />
+        )}
+        {shown && (
+          <SeatPreview
+            seat={shown}
+            canvas={preview}
+            snapshot={selected ? setSnapshot : undefined}
+          />
+        )}
         <Bowl bowl={farBowl} accent={venue.branding.accent} />
         {groups.map(({ stand, blocks }) => (
           <Stand
@@ -212,7 +232,22 @@ function Stadium({ venue }: { venue: VenueConfig }) {
           <strong>Block {block.id}</strong>
         </section>
       )}
-      {shown && (
+      {selected && (
+        <TicketCard
+          venue={venue}
+          seat={selected}
+          snapshot={snapshot}
+          done={done}
+          keep={() => setDone(true)}
+          choose={() => {
+            setDone(false);
+            setSelected(null);
+            setSeat(null);
+            setSnapshot("");
+          }}
+        />
+      )}
+      {shown && !selected && (
         <section className="seat-tooltip" aria-label="Seat details">
           <canvas
             key={shown.id}
@@ -231,14 +266,16 @@ function Stadium({ venue }: { venue: VenueConfig }) {
             key={rejections}
             className={sold.has(shown.id) && rejections ? "taken" : undefined}
           >
-            {sold.has(shown.id) ? "Taken" : selected ? "Selected" : "Available"}
+            {sold.has(shown.id) ? "Taken" : "Available"}
           </span>
         </section>
       )}
       <footer>
-        {block
-          ? "Esc to go back"
-          : "Drag to orbit · Scroll to zoom · Click a block"}
+        {selected && !done
+          ? "Drag to look around · Esc to go back"
+          : block
+            ? "Esc to go back"
+            : "Drag to orbit · Scroll to zoom · Click a block"}
       </footer>
       {venue.shell?.credit && <aside>{venue.shell.credit}</aside>}
     </main>

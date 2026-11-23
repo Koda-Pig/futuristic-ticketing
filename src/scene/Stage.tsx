@@ -14,9 +14,13 @@ import { ACESFilmicToneMapping, Vector3 } from "three";
 
 import type { VenueConfig } from "../venue/schema";
 
+import { SeatCamera } from "./SeatCamera";
+import type { Seat } from "../venue/generateBowl";
+
 type Props = {
   venue: VenueConfig;
   children: ReactNode;
+  seat?: Seat | null;
   overview?: boolean;
   blockPose?: VenueConfig["cameras"]["overview"];
   controls?: ComponentProps<typeof OrbitControls>;
@@ -27,6 +31,7 @@ export function Stage({
   children,
   controls,
   blockPose,
+  seat,
   overview = false,
 }: Props) {
   const { position, target } = venue.cameras.overview;
@@ -57,10 +62,12 @@ export function Stage({
         </>
       )}
       <Suspense fallback={null}>{children}</Suspense>
+      {seat && <SeatCamera seat={seat} />}
       {overview ? (
         <CameraDirector
           overview={venue.cameras.overview}
           blockPose={blockPose}
+          seated={!!seat}
         />
       ) : (
         <OrbitControls
@@ -75,9 +82,11 @@ export function Stage({
 }
 
 function CameraDirector({
+  seated,
   overview,
   blockPose,
 }: {
+  seated: boolean;
   overview: VenueConfig["cameras"]["overview"];
   blockPose?: VenueConfig["cameras"]["overview"];
 }) {
@@ -92,10 +101,17 @@ function CameraDirector({
     () => matchMedia("(prefers-reduced-motion: reduce)").matches,
   );
   const pose = blockPose ?? overview;
-  const previous = useRef(pose);
+  const previous = useRef<typeof overview | null>(overview);
   useLayoutEffect(() => {
     const control = orbit.current;
-    if (!control || previous.current === pose) return;
+    if (!control) return;
+    if (seated) {
+      previous.current = null;
+      flight.current = null;
+      control.enabled = false;
+      return;
+    }
+    if (previous.current === pose) return;
     previous.current = pose;
     flight.current = {
       position: control.object.position.clone(),
@@ -103,7 +119,7 @@ function CameraDirector({
       elapsed: 0,
     };
     control.enabled = false;
-  }, [pose]);
+  }, [pose, seated]);
   useFrame((_, delta) => {
     const move = flight.current,
       control = orbit.current;

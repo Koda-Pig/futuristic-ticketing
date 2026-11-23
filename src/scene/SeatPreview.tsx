@@ -4,23 +4,34 @@ import { PerspectiveCamera, SRGBColorSpace, WebGLRenderTarget } from "three";
 import type { RefObject } from "react";
 import type { Seat } from "../venue/generateBowl";
 
+import { aimAtPitch } from "./SeatCamera";
+
 export function SeatPreview({
   seat,
   canvas,
+  snapshot,
 }: {
+  snapshot?: (url: string) => void;
   seat: Seat;
   canvas: RefObject<HTMLCanvasElement | null>;
 }) {
   const { gl, scene } = useThree();
   useEffect(() => {
     const timer = setTimeout(() => {
-      const el = canvas.current;
+      const el = snapshot ? document.createElement("canvas") : canvas.current;
+      if (el && snapshot) {
+        el.width = 800;
+        el.height = 450;
+      }
       const ctx = el?.getContext("2d");
       if (!el || !ctx) return;
       const { width, height } = el;
       const camera = new PerspectiveCamera(65, width / height, 0.1, 1000);
-      camera.position.set(...seat.eye);
-      camera.lookAt(0, 0, 0);
+      if (snapshot) aimAtPitch(camera, seat);
+      else {
+        camera.position.set(...seat.eye);
+        camera.lookAt(0, 0, 0);
+      }
       const target = new WebGLRenderTarget(width, height);
       target.texture.colorSpace = SRGBColorSpace;
       const original = gl.getRenderTarget();
@@ -42,8 +53,9 @@ export function SeatPreview({
         );
       ctx.putImageData(frame, 0, 0);
       el.dataset.seat = seat.id;
+      if (snapshot) snapshot(el.toDataURL());
     }, 80);
     return () => clearTimeout(timer);
-  }, [canvas, gl, scene, seat]);
+  }, [canvas, gl, scene, seat, snapshot]);
   return null;
 }
