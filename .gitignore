@@ -6,3 +6,6 @@ dist/
 
 # Raw third-party source assets (large, licence forbids redistributing the raw file)
 assets/
+test-results/
+playwright-report/
+.vercel/

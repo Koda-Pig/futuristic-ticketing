@@ -1,10 +1,10 @@
 # Cape Point shell
 
-| Measurement | Source glTF | Shipped GLB | Maximum |
-|---|---:|---:|---:|
-| Triangles | 6,156,109 | 812,098 | 850,000 |
-| Materials | 62 | 15 | 15 |
-| Bytes | 367,032,545 | 11,310,820 | 15,000,000 |
+| Measurement | Source glTF | Shipped GLB |    Maximum |
+| ----------- | ----------: | ----------: | ---------: |
+| Triangles   |   6,156,109 |     812,098 |    850,000 |
+| Materials   |          62 |          15 |         15 |
+| Bytes       | 367,032,545 |  11,310,820 | 15,000,000 |
 
 Source bytes include the manifest, referenced buffer and textures. Triangle counts exclude SketchUp line primitives. Reproduce with `pnpm process:stadium`; add `VERBOSE=1` for a per-material reduction table. The processor checks all three budgets before replacing the derivative (`MAX_TRIANGLES` overrides the triangle limit for experiments only).
 
@@ -33,23 +33,23 @@ Flat-colour surfaces lose their UVs. Normals stripped for simplification are reb
 
 ## Surfaces the app relies on
 
-| Surface | Use |
-|---|---|
+| Surface                              | Use                                                         |
+| ------------------------------------ | ----------------------------------------------------------- |
 | `roof`, `membrane`, `glass`, `truss` | Fade with camera height in the overview; never cast shadows |
-| `leather` | East hospitality seating (open tier, not enclosed boxes) |
-| `display`, `screen` | LED screens; candidates for the jumbotron texture in M3 |
-| `concrete` | Terraces the generated seats sit on |
+| `leather`                            | East hospitality seating (open tier, not enclosed boxes)    |
+| `display`, `screen`                  | LED screens; candidates for the jumbotron texture in M3     |
+| `concrete`                           | Terraces the generated seats sit on                         |
 
 ## East hospitality seating
 
 In source coordinates the elevated leather seats occupy X ≈ 3,551–3,827 and Y ≈ 1,059–3,067. Three longitudinal gaps split the lower bank into four groups. Each group faces west, toward −X (rotation about Y = −π/2 for an object facing local +Z).
 
 | Group, north to south | Approximate world position (x, y, z), metres |
-|---|---|
-| North end | (63, 8.4, −19.4) |
-| North centre | (63, 8.4, −6.5) |
-| South centre | (63, 8.4, 6.5) |
-| South end | (63, 8.4, 19.4) |
+| --------------------- | -------------------------------------------- |
+| North end             | (63, 8.4, −19.4)                             |
+| North centre          | (63, 8.4, −6.5)                              |
+| South centre          | (63, 8.4, 6.5)                               |
+| South end             | (63, 8.4, 19.4)                              |
 
 These positions reference the lower bank of hospitality seats. The upper seats reach roughly 12.8 m above the pitch.
 

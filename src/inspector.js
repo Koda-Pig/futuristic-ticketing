@@ -198,7 +198,8 @@ async function start() {
     controls.update();
   }
   // Dev-only handle for authoring bookmarks from the console: __inspector.pose([eye, target]).
-  if (import.meta.env.DEV) window.__inspector = { scene, camera, controls, pose, render };
+  if (import.meta.env.DEV)
+    window.__inspector = { scene, camera, controls, pose, render };
   for (const [name, view] of Object.entries(bookmarks))
     button(document.querySelector("#bookmarks"), name, () => pose(view));
   function resize() {

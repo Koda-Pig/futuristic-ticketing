@@ -1,0 +1,6 @@
+assets
+dist
+public/venues/**/*.glb
+pnpm-lock.yaml
+test-results
+playwright-report
