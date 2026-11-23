@@ -166,18 +166,38 @@ if (process.env.VERBOSE)
     ),
   );
 
+// Simplification leaves zero-area triangles. Their creased normals come out as
+// (0,0,0), which shade as NaN and make Bloom black out whole frames in motion.
+function dropZeroArea(indices, points) {
+  const kept = [];
+  for (let t = 0; t < indices.length; t += 3) {
+    const [a, b, c] = [indices[t], indices[t + 1], indices[t + 2]];
+    const ux = points[b * 3] - points[a * 3],
+      uy = points[b * 3 + 1] - points[a * 3 + 1],
+      uz = points[b * 3 + 2] - points[a * 3 + 2];
+    const vx = points[c * 3] - points[a * 3],
+      vy = points[c * 3 + 1] - points[a * 3 + 1],
+      vz = points[c * 3 + 2] - points[a * 3 + 2];
+    const cross = Math.hypot(
+      uy * vz - uz * vy,
+      uz * vx - ux * vz,
+      ux * vy - uy * vx,
+    );
+    if (cross > 1e-9) kept.push(a, b, c);
+  }
+  return Uint32Array.from(kept);
+}
+
 // Rebuild normals for surfaces whose normals were stripped: smooth across
 // gentle curvature, hard across creases (steps, frames, fascia edges).
 for (const p of primitives()) {
   if (p.getMode() !== 4 || p.getAttribute("NORMAL")) continue;
   const position = p.getAttribute("POSITION");
+  const points = Float32Array.from(position.getArray());
   const geometry = new BufferGeometry();
-  geometry.setAttribute(
-    "position",
-    new BufferAttribute(Float32Array.from(position.getArray()), 3),
-  );
+  geometry.setAttribute("position", new BufferAttribute(points, 3));
   geometry.setIndex(
-    new BufferAttribute(Uint32Array.from(p.getIndices().getArray()), 1),
+    new BufferAttribute(dropZeroArea(p.getIndices().getArray(), points), 1),
   );
   const creased = mergeVertices(toCreasedNormals(geometry, CREASE_ANGLE));
   position.setArray(creased.getAttribute("position").array);

@@ -126,7 +126,8 @@ export function MatchNight({ venue }: { venue: VenueConfig }) {
   return (
     <>
       <hemisphereLight args={["#94aada", "#1c2430", 0.65]} />
-      <mesh rotation-x={-Math.PI / 2} position-y={-0.5} receiveShadow>
+      {/* Keep the ground well below the apron; a 2 cm gap z-fought at overview distance. */}
+      <mesh rotation-x={-Math.PI / 2} position-y={-0.6} receiveShadow>
         <circleGeometry args={[600, 96]} />
         <meshStandardMaterial color="#17212b" />
       </mesh>

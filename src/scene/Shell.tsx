@@ -1,13 +1,36 @@
 import { useGLTF } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
 import { useLayoutEffect, useMemo } from "react";
-import { type Material, type Mesh, MathUtils } from "three";
+import {
+  type BufferGeometry,
+  type Material,
+  type Mesh,
+  MathUtils,
+} from "three";
 
 import type { VenueConfig } from "../venue/schema";
 
 // Shell surfaces that hide the seating bowl from above (docs/PLAN.md §9).
 const ROOF_SURFACES = new Set(["roof", "membrane", "glass", "truss"]);
 const ROOF_FADE = { low: 35, high: 90, minOpacity: 0.12 };
+
+/**
+ * Simplification leaves zero-area triangles whose rebuilt normals are (0,0,0).
+ * normalize() turns those into NaN pixels, which Bloom's blur spreads into a
+ * fully black frame, so the view flickers while the camera moves. A zero normal
+ * only belongs to a zero-area face, so any unit vector is safe there.
+ */
+function repairNormals(geometry: BufferGeometry) {
+  const normal = geometry.getAttribute("normal");
+  if (!normal) return;
+  let repaired = false;
+  for (let i = 0; i < normal.count; i++)
+    if (!normal.getX(i) && !normal.getY(i) && !normal.getZ(i)) {
+      normal.setXYZ(i, 0, 1, 0);
+      repaired = true;
+    }
+  if (repaired) normal.needsUpdate = true;
+}
 
 type Props = {
   shell: NonNullable<VenueConfig["shell"]>;
@@ -26,6 +49,7 @@ export function Shell({ shell, opacity = 1, roofFade = true }: Props) {
     model.traverse((object) => {
       const mesh = object as Mesh;
       if (!mesh.isMesh) return;
+      repairNormals(mesh.geometry);
       const source = mesh.material as Material;
       if (!copies.has(source)) {
         const copy = source.clone();

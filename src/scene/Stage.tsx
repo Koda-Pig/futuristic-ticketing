@@ -35,7 +35,8 @@ export function Stage({
       frameloop={overview ? "always" : "demand"}
       shadows
       dpr={[1, 1.5]}
-      camera={{ position, fov: 43, near: 0.1, far: 1000 }}
+      // near=1: the camera never gets closer than 8 units, and 0.1 cost 10x depth precision.
+      camera={{ position, fov: 43, near: 1, far: 1000 }}
       gl={{ toneMapping: ACESFilmicToneMapping }}
       aria-label="3D stadium"
       onCreated={({ gl }) => {
