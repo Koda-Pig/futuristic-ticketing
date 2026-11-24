@@ -1,7 +1,5 @@
 import { type Dispatch, type SetStateAction, useEffect, useMemo } from "react";
-import { useFrame } from "@react-three/fiber";
 import {
-  AdditiveBlending,
   BufferGeometry,
   Float32BufferAttribute,
   CanvasTexture,
@@ -9,7 +7,7 @@ import {
   RepeatWrapping,
   SRGBColorSpace,
 } from "three";
-import type { Block } from "../venue/generateBowl";
+import { SEAT_PAN_HEIGHT, type Block } from "../venue/generateBowl";
 import { money } from "../venue/format";
 import type { VenueConfig } from "../venue/schema";
 
@@ -65,8 +63,15 @@ export function Stand({
         for (let j = 0; j < p.length; j += 6) {
           if (j > 0)
             distance += Math.hypot(p[j] - p[j - 6], p[j + 2] - p[j - 4]);
-          band.push(p[j], p[j + 1], p[j + 2], p[j], p[j + 1] - 0.85, p[j + 2]);
-          uv.push(distance / 14, 1, distance / 14, 0);
+          // The fascia faces the pitch, below the first tread.
+          const dx = p[j] - p[j + 3];
+          const dz = p[j + 2] - p[j + 5];
+          const inset = 0.45 / Math.hypot(dx, dz);
+          const x = p[j] + dx * inset;
+          const z = p[j + 2] + dz * inset;
+          const top = p[j + 1] - SEAT_PAN_HEIGHT;
+          band.push(x, top, z, x, top - 0.85, z);
+          uv.push(distance, 1, distance, 0);
           if (j === 0 || j + 6 === p.length) edges.push(...p.slice(j, j + 6));
           if (j + 6 < p.length) {
             const a = base + j / 3;
@@ -78,6 +83,10 @@ export function Stand({
               );
           }
         }
+        // End each panel on a complete price, including short corner blocks.
+        const repeats = Math.max(1, Math.round(distance / 14));
+        for (let u = base * 2; u < uv.length; u += 2)
+          uv[u] *= repeats / (distance || 1);
       }
       if (!band.length) return [];
       const geometry = surface(band, faces);
@@ -111,9 +120,6 @@ export function Stand({
     },
     [surfaces],
   );
-  useFrame((_, delta) => {
-    for (const r of surfaces.ribbons) r.texture.offset.x += delta * 0.035;
-  });
   return (
     <>
       <mesh
@@ -126,7 +132,7 @@ export function Stand({
           if (e.delta < 5 && e.faceIndex != null)
             onEnter?.(surfaces.faceOwners[e.faceIndex]);
         }}
-        onPointerOver={(e) => {
+        onPointerMove={(e) => {
           e.stopPropagation();
           onHover(blocks[0].standId);
         }}
@@ -136,15 +142,15 @@ export function Stand({
       >
         <meshBasicMaterial
           transparent
-          blending={AdditiveBlending}
-          opacity={active ? 0.15 : 0}
+          color="#ff782e"
+          opacity={active ? 0.67 : 0}
           side={DoubleSide}
           depthWrite={false}
         />
       </mesh>
       {active && (
         <lineSegments geometry={surfaces.edges} position-y={0.4}>
-          <lineBasicMaterial color="white" />
+          <lineBasicMaterial color="#ffb06a" />
         </lineSegments>
       )}
       {surfaces.ribbons.map(({ geometry, texture }, i) => (

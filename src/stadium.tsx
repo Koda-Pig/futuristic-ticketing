@@ -1,3 +1,5 @@
+import { useFrame } from "@react-three/fiber";
+import { DoubleSide, MathUtils, PerspectiveCamera, Vector3 } from "three";
 import { useProgress } from "@react-three/drei";
 import { MatchHeader } from "./MatchHeader";
 import {
@@ -68,6 +70,97 @@ function Loading({ ready, name }: { ready: boolean; name: string }) {
       />
     </div>
   );
+}
+
+function SeatAnchor({
+  seat,
+  tooltip,
+}: {
+  seat: Seat;
+  tooltip: React.RefObject<HTMLElement | null>;
+}) {
+  const point = useMemo(() => new Vector3(), []);
+  useFrame(({ camera, size }) => {
+    const el = tooltip.current;
+    if (!el) return;
+    point.set(...seat.position).project(camera);
+    el.hidden =
+      Math.abs(point.x) > 1 || Math.abs(point.y) > 1 || Math.abs(point.z) > 1;
+    if (el.hidden) return;
+    const x = ((1 + point.x) * size.width) / 2;
+    const y = ((1 - point.y) * size.height) / 2;
+    el.style.left =
+      Math.max(
+        8,
+        x + 14 + el.offsetWidth <= size.width - 8
+          ? x + 14
+          : x - el.offsetWidth - 14,
+      ) + "px";
+    el.style.top =
+      Math.max(8, Math.min(y - 20, size.height - el.offsetHeight - 8)) + "px";
+  });
+  return null;
+}
+
+/**
+ * Shifts the view so the scene centres in the space a docked ticket leaves:
+ * left of the card on wide screens, above it on narrow ones. With `fit`, it
+ * also widens the view so a subject that filled the frame still fits there.
+ */
+function ClearOfCard({
+  card,
+  fit,
+}: {
+  card: React.RefObject<HTMLElement | null>;
+  fit: boolean;
+}) {
+  const view = useMemo(() => ({ x: 0, y: 0, zoom: 1 }), []);
+  useFrame(({ camera, gl, size }, delta) => {
+    if (!(camera instanceof PerspectiveCamera)) return;
+    let x = 0,
+      y = 0,
+      free = 1;
+    const el = card.current;
+    if (el?.classList.contains("docked")) {
+      const r = el.getBoundingClientRect();
+      const c = gl.domElement.getBoundingClientRect();
+      if (r.left - c.left > size.width * 0.4) {
+        x = (c.right - r.left) / 2;
+        free = (r.left - c.left) / size.width;
+      } else if (r.top - c.top > size.height * 0.3) {
+        y = (c.bottom - r.top) / 2;
+        free = (r.top - c.top) / size.height;
+      }
+    }
+    const zoom = fit ? MathUtils.clamp(free, 0.7, 1) : 1;
+    const k = matchMedia("(prefers-reduced-motion: reduce)").matches
+      ? 1
+      : 1 - Math.exp(-delta * 5);
+    view.x += (x - view.x) * k;
+    view.y += (y - view.y) * k;
+    view.zoom += (zoom - view.zoom) * k;
+    if (
+      Math.abs(view.x) + Math.abs(view.y) < 0.5 &&
+      Math.abs(view.zoom - 1) < 0.002
+    ) {
+      Object.assign(view, { x: 0, y: 0, zoom: 1 });
+      if (camera.view?.enabled || camera.zoom !== 1) {
+        camera.zoom = 1;
+        camera.clearViewOffset();
+      }
+      return;
+    }
+    camera.zoom = view.zoom;
+    camera.setViewOffset(
+      size.width,
+      size.height,
+      view.x,
+      view.y,
+      size.width,
+      size.height,
+    );
+  });
+  return null;
 }
 
 /** Lets the host tell repeated checkouts apart; the latest one wins. */
@@ -285,7 +378,13 @@ function Stadium({
   }, []);
   const shown = selected ?? seat;
   const tag = useRef<HTMLOutputElement>(null);
+  const tooltip = useRef<HTMLElement>(null);
+  const card = useRef<HTMLElement>(null);
   const active = groups.find((group) => group.stand.id === hover);
+  const stock = active?.blocks.reduce(
+    (sum, b) => sum + (left.get(b.id) ?? 0),
+    0,
+  );
   const standPrices = active?.blocks
     .filter((b) => left.has(b.id))
     .map((b) => venue.pricing.tiers[b.tierId][b.standId]);
@@ -327,12 +426,18 @@ function Stadium({
         setHover(null);
         setSeat(null);
       }}
-      onPointerMove={(e) => {
+      onPointerMoveCapture={(e) => {
         if (tag.current) {
           tag.current.style.left =
-            Math.min(e.clientX + 16, innerWidth - 190) + "px";
+            Math.min(
+              e.clientX + 16,
+              innerWidth - (tag.current.offsetWidth || 220) - 8,
+            ) + "px";
           tag.current.style.top =
-            Math.min(e.clientY + 16, innerHeight - 80) + "px";
+            Math.min(
+              e.clientY + 16,
+              innerHeight - (tag.current.offsetHeight || 80) - 8,
+            ) + "px";
         }
       }}
     >
@@ -359,12 +464,33 @@ function Stadium({
         ) : (
           <ProceduralShell bowl={bowl} />
         )}
+        {block && !selected && (
+          <mesh key={block.id} position-y={-0.22}>
+            <bufferGeometry>
+              <bufferAttribute
+                attach="attributes-position"
+                args={[block.hitMesh.positions, 3]}
+              />
+              <bufferAttribute
+                attach="index"
+                args={[block.hitMesh.indices, 1]}
+              />
+            </bufferGeometry>
+            <meshBasicMaterial
+              color={venue.branding.accent}
+              transparent
+              opacity={0.26}
+              side={DoubleSide}
+              depthWrite={false}
+            />
+          </mesh>
+        )}
         {nearby.map((b) => (
           <BlockSeats
             key={b.id}
             block={b}
             bowl={bowl}
-            accent={venue.branding.accent}
+            accent={b === block ? venue.branding.accent : "#414c57"}
             sold={sold}
             hover={seat}
             selected={selected}
@@ -401,7 +527,13 @@ function Stadium({
             }
           />
         )}
-        <Bowl bowl={bowl} hidden={nearbyIds} accent={venue.branding.accent} />
+        {seat && !selected && <SeatAnchor seat={seat} tooltip={tooltip} />}
+        <ClearOfCard card={card} fit={vip?.step === "picker"} />
+        <Bowl
+          bowl={bowl}
+          hidden={nearbyIds}
+          accent={block && !done ? "#414c57" : venue.branding.accent}
+        />
         {groups.map(({ stand, blocks }) => (
           <Stand
             key={stand.id}
@@ -424,10 +556,14 @@ function Stadium({
       <output ref={tag} hidden={!active || !!block} className="stand-tag">
         {active && (
           <>
-            <small>From</small>
+            <small>
+              {stock
+                ? stock.toLocaleString(venue.locale) + " left"
+                : "Sold out"}
+            </small>
             <strong>{active.stand.label}</strong>
             <span style={{ color: venue.branding.accent }}>
-              {standFrom === null ? "Sold out" : money(venue, standFrom)}
+              {standFrom !== null && "From " + money(venue, standFrom)}
             </span>
           </>
         )}
@@ -450,6 +586,7 @@ function Stadium({
         <TicketCard
           venue={venue}
           seat={selected}
+          ref={card}
           snapshot={vip ? vipSnapshot : snapshot}
           vip={vip}
           box={box}
@@ -499,7 +636,11 @@ function Stadium({
         />
       )}
       {shown && !selected && (
-        <section className="seat-tooltip" aria-label="Seat details">
+        <section
+          ref={tooltip}
+          className="seat-tooltip"
+          aria-label="Seat details"
+        >
           <canvas
             key={shown.id}
             width={320}

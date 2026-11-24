@@ -170,10 +170,9 @@ for (const tier of ["lower", "upper"])
             .innerText();
           await ticket.getByRole("button", { name: /Upgrade/ }).click();
           const vip = page.getByRole("region", { name: "VIP ticket" });
-          await expect(vip.getByRole("img")).toHaveJSProperty(
-            "naturalWidth",
-            800,
-          );
+          // Docked beside the box, so the scene shows it, not a thumbnail.
+          await expect(vip).toHaveClass(/docked/);
+          await expect(vip.getByRole("img")).toHaveCount(0);
           await page.screenshot({
             path: test.info().outputPath("vip-exterior.png"),
           });
@@ -187,10 +186,7 @@ for (const tier of ["lower", "upper"])
           await expect(
             chairs.locator("button:disabled").first(),
           ).toBeDisabled();
-          await expect(vip.getByRole("img")).toHaveJSProperty(
-            "naturalWidth",
-            800,
-          );
+          await expect(vip).toHaveClass(/docked/);
           await page.screenshot({
             path: test.info().outputPath("vip-picker.png"),
           });

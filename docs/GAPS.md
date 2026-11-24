@@ -24,11 +24,9 @@ The picker highlights an available padded recliner. Pick a chair in the scene or
 
 ## 4. Overview and block view
 
-- **Stand hover.** The reel tints the whole stand orange and its glass tag shows stock ("Sold out", "18 left"). The app's highlight is a 15% additive tint plus a white outline (`src/scene/Stand.tsx`), and the tag shows no stock. The stand tag could not be made to appear in the desktop app's browser pane, though seat hover worked there and the e2e smoke test covers stand hover.
-- **Block view.** The reel highlights the chosen block in an accent colour and gives free and taken seats strongly contrasting colours. The app colours every block the same, so the chosen block does not stand out.
-- **LED price ribbons.** They cut through seat rows and get clipped ("UPPER TIER · FROM", "ER · FROM R 750"). In the ascenta reel they sit cleanly on the fascia between tiers.
-- **Seat tooltip.** The reel floats it beside the seat in the 3D scene. The app pins it to the bottom-left corner.
-- **Ticket card.** The reel's floats in the middle of the scene with a 3D tilt. The app's is docked bottom-right and flat.
+Addressed on 2026-11-24. Hovering a stand tints it orange and shows its remaining stock and lowest available price. In the block view, available seats in the chosen block use the venue accent, taken seats are charcoal, and surrounding blocks are muted.
+
+Price panels sit below the front tread of each tier and fit whole labels to each block. The seat preview tracks its chair as the camera moves. The ticket floats near the centre with a slight tilt. Outside the skybox and in the chair picker, the VIP ticket docks to the right (to the bottom on narrow screens) and the view shifts into the space beside it, widening in the picker so every recliner stays clear and clickable.
 
 ## 5. Not yet taken from the ascenta reel
 
@@ -37,5 +35,4 @@ The picker highlights an available padded recliner. Pick a chair in the scene or
 
 ## Suggested order
 
-1. Overview and block view (§4).
-2. Remaining ascenta features (§5).
+Remaining ascenta features (§5).

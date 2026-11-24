@@ -1,3 +1,4 @@
+import type { Ref } from "react";
 import type { VipBox } from "./scene/Skybox";
 import type { Seat } from "./venue/generateBowl";
 import { money } from "./venue/format";
@@ -28,6 +29,7 @@ export function TicketCard({
   standard,
   openPicker,
   pick,
+  ref,
 }: {
   venue: VenueConfig;
   /** Free seats per VIP box, by box ID. */
@@ -47,6 +49,8 @@ export function TicketCard({
   standard: () => void;
   openPicker: () => void;
   pick: (index: number) => void;
+  /** The VIP card, so the scene can stay clear of it while it is docked. */
+  ref?: Ref<HTMLElement>;
 }) {
   const standIndex = venue.stands.findIndex((s) => s.id === seat.standId);
   const tier = venue.tiers.find((t) => t.id === seat.tierId)!;
@@ -70,28 +74,25 @@ export function TicketCard({
     </svg>
   );
   const vipPrice = venue.pricing.vip.pricePerSeat;
+  // Outside the box and while choosing a chair, the scene is the view, so the
+  // card docks to one side without its thumbnail.
+  const docked = !done && vip?.step !== "review";
   if (vip && box)
     return (
       <section
         key="vip"
-        className={"ticket vip" + (done ? " confirmed" : "")}
+        ref={ref}
+        className={
+          "ticket vip" + (done ? " confirmed" : docked ? " docked" : "")
+        }
         aria-label={done ? "VIP confirmation" : "VIP ticket"}
       >
-        {!done && (
+        {!done && !docked && (
           <figure>
             {snapshot && (
-              <img
-                src={snapshot}
-                alt={
-                  vip.step === "exterior"
-                    ? "Glass front of " + box.label
-                    : "View from inside " + box.label
-                }
-              />
+              <img src={snapshot} alt={"View from inside " + box.label} />
             )}
-            <figcaption>
-              {vip.step === "exterior" ? box.label : "Your view from the box"}
-            </figcaption>
+            <figcaption>Your view from the box</figcaption>
           </figure>
         )}
         <div className="ticket-details">

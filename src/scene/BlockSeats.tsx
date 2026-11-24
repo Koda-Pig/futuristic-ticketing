@@ -54,7 +54,7 @@ export function BlockSeats({
             : seat === hover
               ? "white"
               : sold.has(seat.id)
-                ? "#586473"
+                ? "#242b36"
                 : accent,
         ),
       ),

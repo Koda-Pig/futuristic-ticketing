@@ -86,6 +86,14 @@ test("smoke: the scripted demo runs from overview to VIP checkout", async ({
   await page.mouse.move(point.x, point.y);
   await expect(frame.locator("output")).toContainText(east.label);
 
+  const remaining = bowl.seats.filter(
+    (s) => s.standId === east.id && !sold.has(s.id),
+  ).length;
+  await expect(frame.locator("output")).toBeVisible();
+  await expect(frame.locator("output")).toContainText(
+    remaining.toLocaleString(venue.locale) + " left",
+  );
+
   lap("stand hover");
   // Fly into the block.
   await page.mouse.click(point.x, point.y);
@@ -114,6 +122,12 @@ test("smoke: the scripted demo runs from overview to VIP checkout", async ({
     );
   }).toPass({ timeout: 20000 });
 
+  const tip = (await frame.locator(".seat-tooltip").boundingBox())!;
+  expect(
+    Math.min(Math.abs(tip.x - p.x), Math.abs(tip.x + tip.width - p.x)),
+  ).toBeLessThan(30);
+  expect(p.y).toBeGreaterThanOrEqual(tip.y);
+  expect(p.y).toBeLessThanOrEqual(tip.y + tip.height);
   lap("seat hover");
   // Pick it: seat view and the ticket card with its snapshot.
   const ticket = frame.getByRole("region", { name: "Ticket", exact: true });
@@ -129,7 +143,7 @@ test("smoke: the scripted demo runs from overview to VIP checkout", async ({
   // Upgrade: the card flips to VIP, the camera enters the skybox.
   await ticket.getByRole("button", { name: /Upgrade/ }).click();
   const vip = frame.getByRole("region", { name: "VIP ticket" });
-  await expect(vip.getByRole("img")).toHaveJSProperty("naturalWidth", 800);
+  await expect(vip).toHaveClass(/docked/);
   lap("vip card");
   await vip.getByRole("button", { name: /Choose your VIP seat/ }).click();
   const chair = vip
