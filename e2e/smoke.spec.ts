@@ -131,6 +131,7 @@ test("smoke: the scripted demo runs from overview to VIP checkout", async ({
   const vip = frame.getByRole("region", { name: "VIP ticket" });
   await expect(vip.getByRole("img")).toHaveJSProperty("naturalWidth", 800);
   lap("vip card");
+  await vip.getByRole("button", { name: /Choose your VIP seat/ }).click();
   const chair = vip
     .getByRole("group", { name: "Choose your VIP seat" })
     .locator("button:enabled")
@@ -144,7 +145,7 @@ test("smoke: the scripted demo runs from overview to VIP checkout", async ({
   const skybox = venue.vipBoxes.find((b) => b.label === boxLabel)!;
   await chair.click();
   lap("chair");
-  await vip.getByRole("button", { name: "Confirm VIP" }).click();
+  await vip.getByRole("button", { name: "Confirm ticket" }).click();
   lap("confirm click");
   // A VIP checkout carries the VIP seat only, never the standard seat's fields.
   const { checkoutId, ...checkout } = await lastEvent(events, "checkout");

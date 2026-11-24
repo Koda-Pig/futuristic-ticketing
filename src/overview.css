@@ -207,8 +207,42 @@
   max-width: 320px;
 }
 .ticket.vip {
-  background: #17181d;
-  color: #efd8a0;
+  background: linear-gradient(132deg, #28292c, #0b0c0e 70%);
+  color: #f5ecda;
+  border: 1px solid #746856;
+}
+.ticket.vip figure {
+  border-right: 1px dashed #8b7d65;
+}
+.ticket.vip img {
+  object-fit: cover;
+}
+.ticket.vip figcaption {
+  background: #101115dc;
+  padding: 3px 7px;
+  border-radius: 3px;
+}
+.ticket.vip .ticket-price {
+  align-items: center;
+  border-top: 1px solid #ffffff26;
+  padding-top: 10px;
+}
+.ticket.vip svg {
+  fill: currentColor;
+}
+.ticket.vip legend {
+  margin-bottom: 4px;
+}
+.ticket.vip fieldset button {
+  margin: 2px;
+  min-width: 30px;
+  border: 1px solid #665f53;
+  border-radius: 5px;
+  text-decoration: none;
+}
+.ticket.vip fieldset button:enabled:hover,
+.ticket.vip fieldset button[aria-pressed="true"] {
+  border-color: var(--accent);
 }
 .ticket.vip fieldset {
   border: 0;

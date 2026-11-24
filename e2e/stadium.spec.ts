@@ -174,23 +174,56 @@ for (const tier of ["lower", "upper"])
             "naturalWidth",
             800,
           );
+          await page.screenshot({
+            path: test.info().outputPath("vip-exterior.png"),
+          });
+          await expect(page.locator(".block-panel")).toContainText("VIP");
+          await vip
+            .getByRole("button", { name: /Choose your VIP seat/ })
+            .click();
           const chairs = vip.getByRole("group", {
             name: "Choose your VIP seat",
           });
           await expect(
             chairs.locator("button:disabled").first(),
           ).toBeDisabled();
+          await expect(vip.getByRole("img")).toHaveJSProperty(
+            "naturalWidth",
+            800,
+          );
+          await page.screenshot({
+            path: test.info().outputPath("vip-picker.png"),
+          });
           // Cape Point has four boxes; the card can switch between them.
           await expect(
             vip.getByRole("group", { name: "Box" }).getByRole("button"),
           ).toHaveCount(4);
           await chairs.locator("button:enabled").first().click();
-          await vip.getByRole("button", { name: "Confirm VIP" }).click();
+          await expect(
+            vip.getByRole("heading", { name: "Another view" }),
+          ).toBeVisible();
+          await expect(vip.getByRole("img")).toHaveJSProperty(
+            "naturalWidth",
+            800,
+          );
+          await page.screenshot({
+            path: test.info().outputPath("vip-review.png"),
+          });
+          await vip
+            .getByRole("button", { name: "Choose another seat" })
+            .click();
+          await chairs.locator("button:enabled").last().click();
+          await vip.getByRole("button", { name: "Confirm ticket" }).click();
           await expect(page.getByText("VIP seat confirmed")).toBeVisible();
           await page.keyboard.press("Escape");
-          await expect(vip.getByText("Confirm VIP")).toBeVisible();
+          await expect(vip.getByText("Confirm ticket")).toBeVisible();
           await page.keyboard.press("Escape");
-          await expect(vip.getByText("Choose your VIP seat")).toBeVisible();
+          await expect(chairs).toBeVisible();
+          await page.keyboard.press("Escape");
+          await expect(chairs).toBeHidden();
+          await expect(
+            vip.getByRole("button", { name: /Choose your VIP seat/ }),
+          ).toBeVisible();
           await vip.getByText("Back to standard seat").click();
           await expect(ticket.locator(".ticket-price strong")).toHaveText(
             originalPrice,
@@ -277,13 +310,14 @@ test("Riverside embed restores a seat, hands off both checkout prices and resets
   // Changing your mind after a checkout sends a new one with a new ID.
   await frame.getByRole("button", { name: "Back", exact: true }).click();
   await frame.getByRole("button", { name: /Upgrade/ }).click();
+  await frame.getByRole("button", { name: /Choose your VIP seat/ }).click();
   const chair = frame
     .getByRole("group", { name: "Choose your VIP seat" })
     .locator("button:enabled")
     .first();
   const index = Number(await chair.textContent()) - 1;
   await chair.click();
-  await frame.getByRole("button", { name: "Confirm VIP" }).click();
+  await frame.getByRole("button", { name: "Confirm ticket" }).click();
   const box = venue.vipBoxes[0].id;
   const vip = await nextEvent(events, "checkout", 1);
   expect(vip).toEqual({

@@ -18,12 +18,9 @@ The VIP upgrade leaves the rows toward the pitch and enters the box through its 
 
 ## 3. VIP upgrade
 
-- **No exterior shot.** The reel shows the glass skybox from outside, then goes inside. The app's boxes are procedural with no glass (DECISIONS, Skyboxes), so there is no such shot.
-- **VIP seat view.** It looks like an ordinary seat view. There is no glass or box frame around it, as in the reel's "Your view from the box".
-- **Recliners.** The reel has leather recliners with one highlighted. The app's are blocky dark boxes.
-- **VIP card.** The reel's is a polished black ticket with a barcode and a "Choose your VIP seat →" call to action. In the app, boxes and seat numbers are plain underlined text links ("Skybox 1 · Skybox 2…", "1 2 3 4…").
-- **Ending.** The reel ends on an "Another view" pick with "Confirm ticket" and "Choose another seat". The app goes straight to Confirm VIP.
-- **Header.** It still says "Block 205 · 51 left · R 750" while you are in the VIP box.
+Addressed on 2026-11-24. Upgrading stops outside the glass-fronted skybox. The black VIP ticket shows a barcode and a “Choose your VIP seat” button that takes the camera inside. The header shows the active box, its available seats and the VIP price.
+
+The picker highlights an available padded recliner. Pick a chair in the scene or use its numbered button to see the pitch through the window from that seat. The “Another view” ticket lets you confirm or return to the same box to choose another recliner.
 
 ## 4. Overview and block view
 
@@ -40,5 +37,5 @@ The VIP upgrade leaves the rows toward the pitch and enters the box through its 
 
 ## Suggested order
 
-1. Glass skybox, exterior shot and VIP card (§3).
-2. The rest of §4 and §5.
+1. Overview and block view (§4).
+2. Remaining ascenta features (§5).

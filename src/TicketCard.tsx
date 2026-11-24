@@ -3,6 +3,14 @@ import type { Seat } from "./venue/generateBowl";
 import { money } from "./venue/format";
 import type { VenueConfig } from "./venue/schema";
 
+// `enter` is set only on the upgrade and box switches, so stepping back out of
+// the box doesn't replay the fly-in from the seat rows.
+export type VipState = { boxId: string } & (
+  | { step: "exterior"; index: null; enter?: boolean }
+  | { step: "picker"; index: null }
+  | { step: "review"; index: number }
+);
+
 export function TicketCard({
   venue,
   available,
@@ -18,6 +26,7 @@ export function TicketCard({
   upgrade,
   switchBox,
   standard,
+  openPicker,
   pick,
 }: {
   venue: VenueConfig;
@@ -30,20 +39,36 @@ export function TicketCard({
   done: boolean;
   keep: () => void;
   choose: () => void;
-  vip: { index: number | null } | null;
+  vip: VipState | null;
   /** The VIP box being viewed, when `vip` is set. */
   box?: VipBox;
   upgrade: () => void;
   switchBox: (boxId: string) => void;
   standard: () => void;
+  openPicker: () => void;
   pick: (index: number) => void;
 }) {
   const standIndex = venue.stands.findIndex((s) => s.id === seat.standId);
   const tier = venue.tiers.find((t) => t.id === seat.tierId)!;
   const price = venue.pricing.tiers[seat.tierId][seat.standId];
-  const bars = Array.from(seat.id, (c) =>
-    c.charCodeAt(0).toString(2).padStart(8, "0"),
+  const bars = Array.from(
+    vip && box ? box.id + "/" + (vip.index ?? "") : seat.id,
+    (c) => c.charCodeAt(0).toString(2).padStart(8, "0"),
   ).join("");
+  const barcode = (
+    <svg
+      aria-hidden="true"
+      width="72"
+      height="20"
+      viewBox={"0 0 " + bars.length + " 20"}
+      preserveAspectRatio="none"
+    >
+      {Array.from(
+        bars,
+        (v, i) => v === "1" && <rect key={i} x={i} width="1" height="20" />,
+      )}
+    </svg>
+  );
   const vipPrice = venue.pricing.vip.pricePerSeat;
   if (vip && box)
     return (
@@ -54,21 +79,41 @@ export function TicketCard({
       >
         {!done && (
           <figure>
-            {snapshot && <img src={snapshot} alt="Pitch from the skybox" />}
-            <figcaption>View from the box</figcaption>
+            {snapshot && (
+              <img
+                src={snapshot}
+                alt={
+                  vip.step === "exterior"
+                    ? "Glass front of " + box.label
+                    : "View from inside " + box.label
+                }
+              />
+            )}
+            <figcaption>
+              {vip.step === "exterior" ? box.label : "Your view from the box"}
+            </figcaption>
           </figure>
         )}
         <div className="ticket-details">
           <span>VIP · Level {box.level}</span>
-          <h2>{done ? "VIP seat confirmed" : box.label}</h2>
+          <h2>
+            {done
+              ? "VIP seat confirmed"
+              : vip.step === "review"
+                ? "Another view"
+                : box.label}
+          </h2>
           <p>
-            {done && box.label + " · "}
+            {(done || vip.step === "review") && box.label + " · "}
             {vip.index === null
               ? box.seats + " seats"
               : "Seat " + (vip.index + 1)}{" "}
             · Entry VIP
           </p>
-          <strong>{money(venue, vipPrice)}</strong>
+          <div className="ticket-price">
+            {barcode}
+            <strong>{money(venue, vipPrice)}</strong>
+          </div>
           {!done &&
             (vip.index === null ? (
               <>
@@ -87,24 +132,33 @@ export function TicketCard({
                     ))}
                   </fieldset>
                 )}
-                <fieldset>
-                  <legend>Choose your VIP seat</legend>
-                  {Array.from({ length: box.seats }, (_, i) => (
-                    <button
-                      key={i}
-                      disabled={!available[box.id][i]}
-                      aria-label={"VIP seat " + (i + 1)}
-                      onClick={() => pick(i)}
-                    >
-                      {i + 1}
-                    </button>
-                  ))}
-                </fieldset>
+                {vip.step === "exterior" ? (
+                  <button className="upgrade" onClick={openPicker}>
+                    Choose your VIP seat →
+                  </button>
+                ) : (
+                  <fieldset>
+                    <legend>Choose your VIP seat</legend>
+                    {Array.from({ length: box.seats }, (_, i) => (
+                      <button
+                        key={i}
+                        disabled={!available[box.id][i]}
+                        aria-label={"VIP seat " + (i + 1)}
+                        onClick={() => pick(i)}
+                      >
+                        {i + 1}
+                      </button>
+                    ))}
+                  </fieldset>
+                )}
               </>
             ) : (
-              <button className="upgrade" onClick={keep}>
-                Confirm VIP
-              </button>
+              <>
+                <button className="upgrade" onClick={keep}>
+                  Confirm ticket
+                </button>
+                <button onClick={openPicker}>Choose another seat</button>
+              </>
             ))}
           {done && (
             <p>
@@ -155,19 +209,7 @@ export function TicketCard({
           ))}
         </dl>
         <div className="ticket-price">
-          <svg
-            aria-hidden="true"
-            width="72"
-            height="20"
-            viewBox={"0 0 " + bars.length + " 20"}
-            preserveAspectRatio="none"
-          >
-            {Array.from(
-              bars,
-              (v, i) =>
-                v === "1" && <rect key={i} x={i} width="1" height="20" />,
-            )}
-          </svg>
+          {barcode}
           <strong>{money(venue, price)}</strong>
         </div>
         {done ? (

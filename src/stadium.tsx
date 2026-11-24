@@ -9,8 +9,14 @@ import {
   Suspense,
 } from "react";
 
-import { Skybox, SkyboxLights, vipView, worldPoint } from "./scene/Skybox";
-import { TicketCard } from "./TicketCard";
+import {
+  Skybox,
+  SkyboxLights,
+  boxExterior,
+  vipView,
+  worldPoint,
+} from "./scene/Skybox";
+import { TicketCard, type VipState } from "./TicketCard";
 import { BlockSeats } from "./scene/BlockSeats";
 import { SeatPreview } from "./scene/SeatPreview";
 import type { MockDataSource } from "./venue/dataSource";
@@ -63,8 +69,6 @@ function Loading({ ready, name }: { ready: boolean; name: string }) {
     </div>
   );
 }
-
-type VipState = { boxId: string; index: number | null; enter?: boolean };
 
 /** Lets the host tell repeated checkouts apart; the latest one wins. */
 const newCheckoutId = () =>
@@ -146,16 +150,17 @@ function Stadium({
   );
   const [snapshot, setSnapshot] = useState("");
 
-  // `enter` is set only on the upgrade, so going back to the picker from a
-  // chosen VIP seat doesn't replay the fly-in from outside the box.
   const [vip, setVip] = useState<VipState | null>(() => {
     const boxId = query.get("box");
     if (!selected || !boxId || !vipAvailable[boxId]) return null;
     const value = query.get("vipSeat");
     const index = value && /^\d+$/.test(value) ? Number(value) : null;
+    if (index !== null && vipAvailable[boxId][index])
+      return { boxId, step: "review", index };
     return {
       boxId,
-      index: index !== null && vipAvailable[boxId][index] ? index : null,
+      step: query.get("vipView") === "exterior" ? "exterior" : "picker",
+      index: null,
     };
   });
   // Never restored from the URL: a confirmation must follow a real checkout.
@@ -167,19 +172,32 @@ function Stadium({
   const box = vip ? venue.vipBoxes.find((b) => b.id === vip.boxId) : undefined;
   const boxAvailable = box ? vipAvailable[box.id] : [];
   const view = useMemo(
-    () => (vip && box ? vipView(box, vip.index) : null),
+    () =>
+      vip && box
+        ? vip.step === "exterior"
+          ? boxExterior(box)
+          : vipView(box, vip.index)
+        : null,
     [vip, box],
   );
   const entry = useMemo(
     () =>
-      vip?.enter && box
-        ? worldPoint(box, [0, 2, box.size[2] / 2 + 5])
+      vip?.step === "exterior" && vip.enter && box
+        ? worldPoint(box, [
+            box.size[0] * 0.35,
+            box.size[1],
+            box.size[2] / 2 + box.size[0] * 1.4,
+          ])
         : undefined,
     [vip, box],
   );
   function changeVip(next: typeof vip) {
     setVipSnapshot("");
     setVip(next);
+  }
+  function pickVipSeat(index: number) {
+    if (vip?.step === "picker" && !done && boxAvailable[index])
+      changeVip({ boxId: vip.boxId, index, step: "review" });
   }
   const [rejections, reject] = useState(0);
   const preview = useRef<HTMLCanvasElement>(null);
@@ -189,6 +207,7 @@ function Stadium({
       block: block?.id,
       seat: selected?.id,
       box: vip?.boxId,
+      vipView: vip?.step === "exterior" ? "exterior" : undefined,
       vipSeat: vip?.index,
       // Older links may still carry it; drop it.
       done: undefined,
@@ -240,7 +259,15 @@ function Stadium({
   function back() {
     if (done) setDone(false);
     else if (vip)
-      changeVip(vip.index === null ? null : { boxId: vip.boxId, index: null });
+      changeVip(
+        vip.step === "exterior"
+          ? null
+          : {
+              boxId: vip.boxId,
+              step: vip.step === "review" ? "picker" : "exterior",
+              index: null,
+            },
+      );
     else if (selected) {
       setSelected(null);
       setSnapshot("");
@@ -357,11 +384,12 @@ function Stadium({
         )}
         {vip && box && (
           <Skybox
+            key={box.id}
             box={box}
             available={boxAvailable}
             accent={venue.branding.accent}
             index={vip.index}
-            pick={(index) => changeVip({ ...vip, index, enter: false })}
+            pick={vip.step === "picker" ? pickVipSeat : undefined}
           />
         )}
         {shown && (
@@ -407,12 +435,14 @@ function Stadium({
       {block && (
         <section className="block-panel">
           <button onClick={back}>Back</button>
-          <strong>Block {block.id}</strong>
+          <strong>{box ? box.label : "Block " + block.id}</strong>
           <span>
-            {left.get(block.id)
-              ? `${left.get(block.id)} left · ` +
-                money(venue, venue.pricing.tiers[block.tierId][block.standId])
-              : "Sold out · try a neighbouring block"}
+            {box
+              ? `VIP · ${boxAvailable.filter(Boolean).length} left · ${money(venue, venue.pricing.vip.pricePerSeat)}`
+              : left.get(block.id)
+                ? `${left.get(block.id)} left · ` +
+                  money(venue, venue.pricing.tiers[block.tierId][block.standId])
+                : "Sold out · try a neighbouring block"}
           </span>
         </section>
       )}
@@ -425,11 +455,22 @@ function Stadium({
           box={box}
           upgrade={() => {
             const next = nearestBox(selected);
-            if (next) changeVip({ boxId: next.id, index: null, enter: true });
+            if (next)
+              changeVip({
+                boxId: next.id,
+                index: null,
+                step: "exterior",
+                enter: true,
+              });
           }}
-          switchBox={(boxId) => changeVip({ boxId, index: null, enter: true })}
+          switchBox={(boxId) =>
+            changeVip({ boxId, index: null, step: "exterior", enter: true })
+          }
           standard={() => changeVip(null)}
-          pick={(index) => vip && changeVip({ ...vip, index, enter: false })}
+          openPicker={() =>
+            vip && changeVip({ boxId: vip.boxId, index: null, step: "picker" })
+          }
+          pick={pickVipSeat}
           embedded={!!bridge}
           available={vipAvailable}
           vipLeft={vipLeft}

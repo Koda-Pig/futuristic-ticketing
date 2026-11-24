@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
 import { Vector3 } from "three";
 import type { VenueConfig } from "../venue/schema";
 
@@ -20,6 +21,14 @@ function chair(box: VipBox, i: number): Point {
     box.size[2] * (back ? -0.12 : 0.27),
   ];
 }
+export function boxExterior(box: VipBox) {
+  const [w, h, d] = box.size;
+  return {
+    id: box.id + "/exterior",
+    eye: worldPoint(box, [w * 0.28, h * 0.8, d / 2 + w * 0.82]),
+    target: worldPoint(box, [0, h * 0.48, d * 0.24]),
+  };
+}
 export function vipView(box: VipBox, index: number | null) {
   const [x, y, z] =
     index === null
@@ -39,6 +48,25 @@ function Slab({ at, size, color }: { at: Point; size: Point; color: string }) {
     <mesh position={at}>
       <boxGeometry args={size} />
       <meshStandardMaterial color={color} />
+    </mesh>
+  );
+}
+// All recliners share the same rounded moulding at different scales.
+const cushion = new RoundedBoxGeometry(1, 1, 1, 3, 0.18);
+function Pad({
+  at,
+  size,
+  color,
+  tilt = 0,
+}: {
+  at: Point;
+  size: Point;
+  color: string;
+  tilt?: number;
+}) {
+  return (
+    <mesh geometry={cushion} position={at} scale={size} rotation-x={tilt}>
+      <meshStandardMaterial color={color} roughness={0.36} />
     </mesh>
   );
 }
@@ -73,10 +101,13 @@ export function Skybox({
   index: number | null;
   available: boolean[];
   accent: string;
-  pick: (i: number) => void;
+  pick?: (i: number) => void;
 }) {
   const [hover, setHover] = useState<number | null>(null);
   const [w, h, d] = box.size;
+  const highlighted =
+    index ??
+    (hover !== null && available[hover] ? hover : available.indexOf(true));
   return (
     <group position={box.position} rotation-y={box.rotationY}>
       <Slab at={[0, -0.07, 0]} size={[w, 0.14, d]} color="#493628" />
@@ -94,45 +125,69 @@ export function Skybox({
           color="#493628"
         />
       ))}
+      <Slab at={[0, h, 0]} size={[w + 0.16, 0.14, d + 0.16]} color="#333c41" />
+      <Slab at={[0, 0.68, d / 2]} size={[w, 0.045, 0.07]} color="#8a9190" />
+      {[-0.5, -0.25, 0, 0.25, 0.5].map((offset) => (
+        <Slab
+          key={offset}
+          at={[w * offset, h / 2, d / 2]}
+          size={[0.045, h, 0.09]}
+          color="#455461"
+        />
+      ))}
       <mesh position={[0, h / 2, d / 2]}>
         <boxGeometry args={[w, h, 0.035]} />
         <meshPhysicalMaterial
           color="#bddbef"
           roughness={0.05}
           transparent
-          opacity={0.09}
+          opacity={0.16}
           depthWrite={false}
         />
       </mesh>
       {Array.from({ length: box.seats }, (_, i) => {
         const taken = !available[i];
-        const color = index === i ? accent : taken ? "#453e3a" : "#27232b";
+        const color =
+          highlighted === i ? accent : taken ? "#393637" : "#513c36";
         return (
           <group
             key={i}
             position={chair(box, i)}
             onPointerOver={(e) => {
               e.stopPropagation();
-              setHover(i);
+              if (pick) setHover(i);
             }}
             onPointerOut={() => setHover(null)}
             onClick={(e) => {
               e.stopPropagation();
-              if (index === null && !taken) pick(i);
+              if (!taken) pick?.(i);
             }}
           >
-            <Slab at={[0, 0.36, 0]} size={[0.76, 0.34, 0.74]} color={color} />
-            <Slab
-              at={[0, 0.72, -0.34]}
-              size={[0.76, 0.8, 0.17]}
+            <Pad at={[0, 0.2, 0]} size={[0.73, 0.32, 0.82]} color="#242328" />
+            <Pad at={[0, 0.43, 0.04]} size={[0.75, 0.23, 0.78]} color={color} />
+            <Pad
+              at={[0, 0.77, -0.34]}
+              size={[0.78, 0.81, 0.25]}
+              tilt={-0.18}
+              color={color}
+            />
+            <Pad
+              at={[0, 1.13, -0.39]}
+              size={[0.64, 0.24, 0.26]}
+              color={color}
+            />
+            <Pad
+              at={[0, 0.23, 0.46]}
+              size={[0.72, 0.35, 0.15]}
+              tilt={-0.28}
               color={color}
             />
             {[-1, 1].map((side) => (
-              <Slab
+              <Pad
                 key={side}
-                at={[side * 0.4, 0.52, 0]}
-                size={[0.12, 0.25, 0.8]}
-                color={hover === i && !taken && index === null ? accent : color}
+                at={[side * 0.44, 0.55, 0.025]}
+                size={[0.18, 0.32, 0.81]}
+                color={color}
               />
             ))}
           </group>
