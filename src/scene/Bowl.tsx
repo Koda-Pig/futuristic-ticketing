@@ -1,12 +1,13 @@
 import { useThree } from "@react-three/fiber";
 import { useLayoutEffect, useMemo, useRef } from "react";
-import { BoxGeometry, Color, type InstancedMesh, Object3D } from "three";
+import { DoubleSide, Color, type InstancedMesh, Object3D } from "three";
 
 import type { Bowl as BowlData } from "../venue/generateBowl";
 
-// Far LOD: one small box per seat, one draw call per tier (docs/PLAN.md §6.5).
-const geometry = new BoxGeometry(0.44, 0.5, 0.42);
-geometry.translate(0, -0.2, 0); // seat position is the pan; the box sits on the tread
+import { seatShell } from "./seatShell";
+
+// Eight triangles per distant chair, instanced once per tier.
+const geometry = seatShell(false);
 
 type Props = {
   bowl: BowlData;
@@ -100,7 +101,7 @@ function TierSeats({
       castShadow
       receiveShadow
     >
-      <meshStandardMaterial roughness={0.6} />
+      <meshStandardMaterial roughness={0.44} side={DoubleSide} />
     </instancedMesh>
   );
 }

@@ -6,12 +6,9 @@ Ranked roughly by how much each one shows on screen. Gaps where the plan chose d
 
 ## 1. Rendering quality
 
-The largest gap; every frame is affected.
+Addressed on 2026-11-24. A warm floodlight casts shadows across the bowl, with cool fill from the opposite side. Both venues use a near-black backdrop and a lit perimeter in place of the car park; at Cape Point the perimeter runs outside the stadium model. Cape Point also picks up the venue accent on its roof membrane and trusses, and the glow fades with the roof in the overview.
 
-- **Lighting.** Both reels look like offline renders: soft ambient light, contact shadows, specular seat plastic, and (omnyalab) a hard sun shadow across the bowl. The app is flat and grey with low contrast. The overview reads as a dim model on dark ground.
-- **Seats.** The reels' seats are modelled shells you can read one by one. In block view the app's seats look like simple boxes.
-- **Crowd.** The seat view's crowd is flat-coloured cutouts (`src/scene/Crowd.tsx`) and is the cheapest-looking thing on screen. Both reels show empty seats, which also keeps availability readable. Consider dropping the crowd or making it far subtler (PLAN M5 asks for crowd billboards).
-- **Overview setting.** The ascenta reel's overview is "holographic": a glowing bowl with rim light on black. The app's car park at night is not that. The omnyalab reel's bright park is the deferred day look **(by plan, §16)**.
+Seats now have a cupped pan and curved backrest. Nearby blocks use the detailed moulding and glossy plastic. Distant tiers use an eight-triangle version of the same profile. The seat view leaves the rows empty, with availability shown by seat colour. This replaces the crowd billboards specified in PLAN M5.
 
 ## 2. Camera moves
 
@@ -43,7 +40,6 @@ The largest gap; every frame is affected.
 
 ## Suggested order
 
-1. Lighting and seat/crowd materials (§1): they affect every frame.
-2. The camera path into the skybox (§2): a visible bug.
-3. Glass skybox, exterior shot and VIP card (§3).
-4. The rest of §4 and §5.
+1. The camera path into the skybox (§2): a visible bug.
+2. Glass skybox, exterior shot and VIP card (§3).
+3. The rest of §4 and §5.

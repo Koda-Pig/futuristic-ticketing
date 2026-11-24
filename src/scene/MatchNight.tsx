@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo } from "react";
 import {
   Bloom,
   EffectComposer,
@@ -6,12 +6,15 @@ import {
   Vignette,
 } from "@react-three/postprocessing";
 import {
+  type Box3,
   CanvasTexture,
-  Object3D,
+  DoubleSide,
+  BufferGeometry,
+  Float32BufferAttribute,
   SRGBColorSpace,
-  type InstancedMesh,
 } from "three";
 import type { VenueConfig } from "../venue/schema";
+import { superellipse } from "../venue/superellipse";
 import { kickoff } from "../venue/format";
 import { boardTexture } from "./Stand";
 import { useQuality } from "../quality";
@@ -54,34 +57,82 @@ function turf({ width, length, kind }: VenueConfig["pitch"]) {
   return map;
 }
 
-function precinct() {
+// A narrow illuminated plinth 4 m outside the last seating row, or outside
+// `clear` (a shell model's footprint) when that reaches further.
+function plinth(venue: VenueConfig, clear?: Box3) {
+  const { halfWidth, halfLength } = venue.outline;
+  const offset =
+    Math.max(
+      ...venue.tiers.map(
+        (t) =>
+          t.offset +
+          t.rowDepth * Math.max(t.rows, ...Object.values(t.rowsByStand ?? {})),
+      ),
+      ...(clear
+        ? [
+            clear.max.x - halfWidth,
+            -clear.min.x - halfWidth,
+            clear.max.z - halfLength,
+            -clear.min.z - halfLength,
+          ]
+        : []),
+    ) + 4;
+  const curve = superellipse(
+    venue.outline.halfWidth,
+    venue.outline.halfLength,
+    venue.outline.exponent,
+    256,
+  );
+  const vertices: number[] = [],
+    indices: number[] = [];
+  for (let i = 0; i < curve.arc.length; i++) {
+    for (const d of [offset, offset + 0.45]) {
+      vertices.push(
+        curve.points[2 * i] + d * curve.normals[2 * i],
+        -0.42,
+        curve.points[2 * i + 1] + d * curve.normals[2 * i + 1],
+      );
+    }
+    const a = 2 * i,
+      b = 2 * ((i + 1) % curve.arc.length);
+    indices.push(a, b, a + 1, a + 1, b, b + 1);
+  }
+  const geometry = new BufferGeometry();
+  geometry.setAttribute("position", new Float32BufferAttribute(vertices, 3));
+  geometry.setIndex(indices);
+  return geometry;
+}
+
+export function Perimeter({
+  venue,
+  clear,
+}: {
+  venue: VenueConfig;
+  clear?: Box3;
+}) {
+  const rim = useMemo(() => plinth(venue, clear), [venue, clear]);
+  useEffect(() => () => rim.dispose(), [rim]);
+  return (
+    <mesh geometry={rim}>
+      <meshBasicMaterial
+        color={venue.branding.accent}
+        side={DoubleSide}
+        toneMapped={false}
+      />
+    </mesh>
+  );
+}
+
+function floorGlow() {
   const canvas = document.createElement("canvas");
   canvas.width = canvas.height = 1024;
   const ctx = canvas.getContext("2d")!;
   const glow = ctx.createRadialGradient(512, 512, 200, 512, 512, 510);
-  glow.addColorStop(0, "#46545b");
-  glow.addColorStop(1, "#17212b");
+  glow.addColorStop(0, "#02050a");
+  glow.addColorStop(0.36, "#112935");
+  glow.addColorStop(1, "#03070d");
   ctx.fillStyle = glow;
   ctx.fillRect(0, 0, 1024, 1024);
-  ctx.strokeStyle = "#39454e";
-  ctx.lineWidth = 12;
-  ctx.beginPath();
-  ctx.ellipse(512, 512, 360, 390, 0, 0, Math.PI * 2);
-  ctx.stroke();
-  for (const x of [80, 862]) {
-    ctx.fillStyle = "#242c34";
-    ctx.fillRect(x, 390, 82, 244);
-    ctx.strokeStyle = "#82908e";
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    for (let y = 398; y < 630; y += 12) {
-      ctx.moveTo(x + 4, y);
-      ctx.lineTo(x + 28, y);
-      ctx.moveTo(x + 54, y);
-      ctx.lineTo(x + 78, y);
-    }
-    ctx.stroke();
-  }
   const map = new CanvasTexture(canvas);
   map.colorSpace = SRGBColorSpace;
   return map;
@@ -90,7 +141,7 @@ function precinct() {
 export function MatchNight({ venue }: { venue: VenueConfig }) {
   const pitch = useMemo(() => turf(venue.pitch), [venue.pitch]);
   const quality = useQuality((q) => q.level);
-  const apron = useMemo(precinct, []);
+  const apron = useMemo(floorGlow, []);
   useEffect(() => () => apron.dispose(), [apron]);
   const screen = useMemo(() => {
     const { day, time } = kickoff(venue);
@@ -106,41 +157,17 @@ export function MatchNight({ venue }: { venue: VenueConfig }) {
     },
     [pitch, screen],
   );
-  const trees = useRef<InstancedMesh>(null);
   const x = venue.outline.halfWidth + 39,
     z = venue.outline.halfLength + 39;
-  useLayoutEffect(() => {
-    const tree = new Object3D();
-    for (let i = 0; i < 160; i++) {
-      const angle = i * 2.39996,
-        ring = 1.4 + (i % 11) * 0.025;
-      tree.position.set(
-        Math.cos(angle) * x * ring,
-        2,
-        Math.sin(angle) * z * ring,
-      );
-      tree.scale.setScalar(0.8 + (i % 5) * 0.09);
-      tree.updateMatrix();
-      trees.current!.setMatrixAt(i, tree.matrix);
-    }
-    trees.current!.instanceMatrix.needsUpdate = true;
-  }, [x, z]);
   return (
     <>
-      <hemisphereLight args={["#94aada", "#1c2430", 0.65]} />
-      {/* Keep the ground well below the apron; a 2 cm gap z-fought at overview distance. */}
-      <mesh rotation-x={-Math.PI / 2} position-y={-0.6} receiveShadow>
-        <circleGeometry args={[600, 96]} />
-        <meshStandardMaterial color="#17212b" />
-      </mesh>
-      <mesh rotation-x={-Math.PI / 2} position-y={-0.48}>
+      <hemisphereLight args={["#cedffc", "#354452", 0.95]} />
+      <mesh rotation-x={-Math.PI / 2} position-y={-0.6}>
         <planeGeometry args={[x * 3.7, z * 3.7]} />
-        <meshStandardMaterial map={apron} />
+        <meshBasicMaterial map={apron} toneMapped={false} />
       </mesh>
-      <instancedMesh ref={trees} args={[undefined, undefined, 160]}>
-        <coneGeometry args={[2.2, 6, 7]} />
-        <meshStandardMaterial color="#204638" />
-      </instancedMesh>
+      {/* A shell venue draws its own, outside the model (stadium.tsx). */}
+      {!venue.shell && <Perimeter venue={venue} />}
       <mesh rotation-x={-Math.PI / 2} position-y={0.04} receiveShadow>
         <planeGeometry args={[venue.pitch.width + 8, venue.pitch.length + 8]} />
         <meshStandardMaterial map={pitch} />
@@ -170,8 +197,8 @@ export function MatchNight({ venue }: { venue: VenueConfig }) {
             <group key={side}>
               <directionalLight
                 position={[side * x, 55, end * z]}
-                intensity={1.05}
-                color="#fff3db"
+                intensity={side === end ? (side === 1 ? 3.1 : 1.8) : 0.28}
+                color={side === 1 && end === 1 ? "#fff2d8" : "#8abfff"}
                 castShadow={side === 1 && end === 1}
                 shadow-mapSize-width={2048}
                 shadow-mapSize-height={2048}
@@ -179,7 +206,7 @@ export function MatchNight({ venue }: { venue: VenueConfig }) {
                 shadow-camera-right={95}
                 shadow-camera-top={95}
                 shadow-camera-bottom={-95}
-                shadow-normalBias={0.08}
+                shadow-normalBias={0.025}
               />
               <mesh position={[side * x, 18, end * z]}>
                 <cylinderGeometry args={[0.28, 0.5, 36, 8]} />

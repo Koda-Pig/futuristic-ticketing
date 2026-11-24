@@ -353,7 +353,7 @@ console.table(
 console.table({ before, after });
 if (repaired) console.log(`Repaired ${repaired} zero normals`);
 if (zero) throw Error(`Shipped shell still has ${zero} zero normals`);
-// Desktop-only v1: shell ≤850k leaves room for ~400k far-LOD seats and crowd
+// Desktop-only v1: shell ≤850k leaves room for ~400k far-LOD seats
 // within the 1.5M on-screen budget (docs/PLAN.md §13).
 const MAX_TRIANGLES = Number(process.env.MAX_TRIANGLES ?? 850000);
 if (

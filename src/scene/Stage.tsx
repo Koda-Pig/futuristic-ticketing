@@ -63,7 +63,7 @@ export function Stage({
         requestAnimationFrame(() => requestAnimationFrame(() => onReady?.()));
       }}
     >
-      <color attach="background" args={["#10151c"]} />
+      <color attach="background" args={[overview ? "#03070d" : "#10151c"]} />
       {!overview && (
         <>
           <hemisphereLight args={["#c9d6ff", "#20242c", 1.2]} />

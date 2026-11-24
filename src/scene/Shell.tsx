@@ -1,8 +1,13 @@
 import { useFrame, useLoader, useThree } from "@react-three/fiber";
 import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import {
+  Box3,
+  Euler,
   type Material,
+  Matrix4,
+  Quaternion,
   type Mesh,
+  MeshStandardMaterial,
   MathUtils,
   Plane,
   Vector3,
@@ -47,7 +52,22 @@ function placeBox(planes: Plane[], box: Box) {
   );
 }
 
+/** The shell's footprint in scene space, after its placement transform. */
+export function useShellBounds(shell: NonNullable<VenueConfig["shell"]>) {
+  const { scene } = useLoader(ShellLoader, shell.gltfUrl);
+  const { position, rotationY = 0, scale = 1 } = shell;
+  return useMemo(() => {
+    const placement = new Matrix4().compose(
+      new Vector3(...(position ?? [0, 0, 0])),
+      new Quaternion().setFromEuler(new Euler(0, rotationY, 0)),
+      new Vector3(scale, scale, scale),
+    );
+    return new Box3().setFromObject(scene).applyMatrix4(placement);
+  }, [scene, position, rotationY, scale]);
+}
+
 type Props = {
+  accent?: string;
   opening?: VenueConfig["vipBoxes"][number];
   shell: NonNullable<VenueConfig["shell"]>;
   /** Overall opacity, e.g. 0.5 while calibrating. */
@@ -56,7 +76,13 @@ type Props = {
   roofFade?: boolean;
 };
 
-export function Shell({ shell, opening, opacity = 1, roofFade = true }: Props) {
+export function Shell({
+  shell,
+  opening,
+  accent,
+  opacity = 1,
+  roofFade = true,
+}: Props) {
   // Zero normals from simplification are repaired by the processor
   // (scripts/process-stadium.mjs), which refuses to ship a GLB with any.
   const { scene } = useLoader(ShellLoader, shell.gltfUrl);
@@ -70,7 +96,16 @@ export function Shell({ shell, opening, opacity = 1, roofFade = true }: Props) {
       const source = mesh.material as Material;
       if (!copies.has(source)) {
         const copy = source.clone();
+        if (accent && copy instanceof MeshStandardMaterial) {
+          if (source.name === "paving") copy.color.set("#18222c");
+          if (source.name === "membrane" || source.name === "truss") {
+            copy.emissive.set(accent);
+            copy.emissiveIntensity = source.name === "membrane" ? 1.4 : 0.35;
+          }
+        }
         copy.userData.baseOpacity = source.opacity;
+        if (copy instanceof MeshStandardMaterial)
+          copy.userData.baseEmissive = copy.emissiveIntensity;
         copy.userData.roof = ROOF_SURFACES.has(source.name);
         copies.set(source, copy);
       }
@@ -79,7 +114,7 @@ export function Shell({ shell, opening, opacity = 1, roofFade = true }: Props) {
       if (ROOF_SURFACES.has(source.name)) mesh.castShadow = false;
     });
     return { model, materials: [...copies.values()] };
-  }, [scene]);
+  }, [scene, accent]);
   // The copies are this instance's own; the cached GLB keeps the originals.
   useEffect(
     () => () => {
@@ -160,6 +195,9 @@ export function Shell({ shell, opening, opacity = 1, roofFade = true }: Props) {
       material.transparent = transparent;
       material.depthWrite = value > 0.99;
       material.opacity = value;
+      // A faded roof should stop glowing too, or it veils the bowl in accent.
+      if (material.userData.roof && material instanceof MeshStandardMaterial)
+        material.emissiveIntensity = material.userData.baseEmissive * roof;
     }
   };
   useLayoutEffect(() => {

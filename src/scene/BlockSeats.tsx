@@ -1,15 +1,10 @@
 import { useLayoutEffect, useRef, useMemo } from "react";
-import { BoxGeometry, Color, InstancedMesh, Object3D } from "three";
-import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
+import { Color, DoubleSide, InstancedMesh, Object3D } from "three";
 import type { Block, Bowl, Seat } from "../venue/generateBowl";
 
-const chair = mergeGeometries([
-  new BoxGeometry(0.43, 0.09, 0.4),
-  new BoxGeometry(0.43, 0.42, 0.07).translate(0, 0.18, -0.18),
-  ...[-0.22, 0.22].map((x) =>
-    new BoxGeometry(0.04, 0.06, 0.32).translate(x, 0.15, 0),
-  ),
-]);
+import { seatShell } from "./seatShell";
+
+const chair = seatShell(true);
 
 export function BlockSeats({
   bowl,
@@ -70,6 +65,8 @@ export function BlockSeats({
   return (
     <instancedMesh
       ref={mesh}
+      castShadow
+      receiveShadow
       args={[chair, undefined, seats.length]}
       onPointerMove={
         interactive
@@ -90,7 +87,7 @@ export function BlockSeats({
           : undefined
       }
     >
-      <meshStandardMaterial roughness={0.6} />
+      <meshStandardMaterial roughness={0.3} side={DoubleSide} />
     </instancedMesh>
   );
 }

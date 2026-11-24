@@ -103,7 +103,6 @@ Where the built app still falls short of these reels is tracked in [GAPS.md](GAP
 │  │  ├─ BlockSeats.tsx          # near-LOD instanced seats for active block(s)
 │  │  ├─ BlockHitAreas.tsx       # invisible pick meshes + hover outline
 │  │  ├─ LedRibbons.tsx          # in-world tier prices
-│  │  ├─ Crowd.tsx               # instanced billboards on sold seats
 │  │  ├─ Skybox.tsx              # VIP interior furnishing + glass
 │  │  └─ snapshots.ts            # render-to-texture thumbnails/snapshots
 │  ├─ ui/
@@ -293,7 +292,7 @@ Transitions and controls:
 
 ## 9. Scene and visuals
 
-- **Renderer:** `<Canvas dpr={[1, 1.5]} gl={{ antialias: false }}>`, ACES filmic tone mapping, sRGB output. Post-processing: SMAA, Bloom (luminance threshold so only LEDs, floodlight heads and the roof edge glow), and a slight vignette. A `PerformanceMonitor` drops bloom → crowd → DPR 1 in that order when it detects a sustained fps drop.
+- **Renderer:** `<Canvas dpr={[1, 1.5]} gl={{ antialias: false }}>`, ACES filmic tone mapping, sRGB output. Post-processing: SMAA, Bloom (luminance threshold so only LEDs, floodlight heads and the roof edge glow), and a slight vignette. `AdaptiveQuality` drops DPR to 1, then post-processing, when it detects a sustained fps drop.
 - **Roof fade:** the `roof`, `membrane`, `glass` and `truss` surfaces fade from opaque to ~12% opacity as the camera rises from 35 m to 90 m, otherwise the roof hides the stands in the overview. They cast no shadows, since floodlights hang under the roof edge. Prototyped in the inspector (`src/inspector.js`, `ROOF_FADE`).
 - **Lighting:** a night `Environment` (a drei preset or small HDR, intensity ≈ 0.3), a hemisphere fill, and 4 directional "floodlight" lights (one shadow-casting, 2048 shadow map limited to the pitch and lower bowl). The floodlight masts or roof lights are emissive meshes.
 - **Pitch:** procedural shader with mowing stripes, line markings drawn from `pitch.kind` (football or rugby lines), and a subtle darker edge. Goalposts as simple geometry.
@@ -301,7 +300,7 @@ Transitions and controls:
 - **Seats:** far LOD (§6.5) is always on. Near LOD: `BlockSeats` renders a detailed seat (≈150 tris, procedural: pan + back + armrests) as one `InstancedMesh` per block, for the active block and its neighbours (≤ ~3k instances). Colours: available = venue accent tint, sold = desaturated slate, hovered = white, selected = orange (`#ff6a2b`).
 - **Block hover:** the hovered block (or stand, in overview) gets a white outline (edges of the hit mesh drawn as a thin line, plus a 15% additive fill), and its seats brighten.
 - **LED ribbons (`LedRibbons.tsx`):** emissive curved bands along each tier's front fascia (inside face), showing per-stand text like `LOWER TIER · FROM R 450` in a canvas texture, scrolling slowly. In the overview they double as a price legend.
-- **Crowd:** instanced camera-facing billboards (2 tris each) on sold seats, using a 16-silhouette texture atlas with random team-colour tints. Shown in `seat`, `vipBox` and `vipSeat` (match-day look); hidden in `overview` and `block` so availability colours stay readable.
+- **No crowd:** seats stay empty in every state, as in both reference reels, so availability colours stay readable. This replaced instanced crowd billboards on sold seats (docs/GAPS.md §1).
 - **Jumbotron:** two screens (or the model's LED screens) showing the matchup "CAPE STORM vs HIGHVELD LIONS · SAT 14 MAR 17:00" and the venue's accent colour.
 - **Skybox interior:** furnish the box at each `vipBoxes` pose: 8 dark leather recliners (2 rows × 4, the front row lower), a glass front (`MeshPhysicalMaterial`, transmission off, roughness 0.05, faint reflection), warm interior spotlights, and a counter at the back. The hovered recliner gets an orange rim and the chosen one turns orange (as in the reel).
 
@@ -321,8 +320,8 @@ Transitions and controls:
 ## 10. Snapshots and thumbnails (`snapshots.ts`)
 
 - A secondary `PerspectiveCamera` (fov 60) renders into a `WebGLRenderTarget`.
-- **Seat tooltip thumbnail:** 320×180 target, re-rendered **only when the hovered seat changes** (debounced 80 ms), from `seat.eye`, looking at the pitch centre. Crowd and post-processing are off for thumbnails. Show it as a `<canvas>` copied with `readRenderTargetPixels` (flip Y), or render the target's texture in a second small R3F view. Use whichever is cheaper in practice.
-- **Ticket "Your view":** 800×450, rendered once when entering `seat`, crowd on, and converted to a data-URL `<img>`.
+- **Seat tooltip thumbnail:** 320×180 target, re-rendered **only when the hovered seat changes** (debounced 80 ms), from `seat.eye`, looking at the pitch centre. Post-processing is off for thumbnails. Show it as a `<canvas>` copied with `readRenderTargetPixels` (flip Y), or render the target's texture in a second small R3F view. Use whichever is cheaper in practice.
+- **Ticket "Your view":** 800×450, rendered once when entering `seat` and converted to a data-URL `<img>`.
 - **VIP view:** the same, from the box's viewpoint, then from the chosen recliner.
 
 ---
@@ -416,7 +415,7 @@ Block hit areas, the fly-in pose, near-LOD `BlockSeats` with availability colour
 ✅ Any block can be entered; the tooltip IDs match the generator; the thumbnail updates in < 100 ms after the hover settles.
 
 **M5: Seat view and ticket card**
-Camera to the seat's eye, look-around limits, crowd billboards, "Your view" snapshot, TicketCard front, Keep my seat → done state, Choose another seat.
+Camera to the seat's eye, look-around limits, "Your view" snapshot, TicketCard front, Keep my seat → done state, Choose another seat.
 ✅ The view from a front-row lower seat and from a back-row upper seat look clearly different and correct (pitch visible, nothing clips the camera); the card fields match the seat.
 
 **M6: VIP upgrade**

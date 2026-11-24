@@ -10,7 +10,6 @@ import {
 } from "react";
 
 import { Skybox, SkyboxLights, vipView, worldPoint } from "./scene/Skybox";
-import { Crowd } from "./scene/Crowd";
 import { TicketCard } from "./TicketCard";
 import { BlockSeats } from "./scene/BlockSeats";
 import { SeatPreview } from "./scene/SeatPreview";
@@ -20,16 +19,27 @@ import { ProceduralShell } from "./scene/ProceduralShell";
 import type { Block, Seat } from "./venue/generateBowl";
 import { Stand } from "./scene/Stand";
 import { money } from "./venue/format";
-import { MatchNight } from "./scene/MatchNight";
+import { MatchNight, Perimeter } from "./scene/MatchNight";
 import "./overview.css";
 import { DesktopGate } from "./notices";
 import { Bowl } from "./scene/Bowl";
-import { Shell } from "./scene/Shell";
+import { Shell, useShellBounds } from "./scene/Shell";
 import { Stage } from "./scene/Stage";
 import { generateBowl } from "./venue/generateBowl";
 import { type VenueConfig } from "./venue/schema";
 
 /** Full-screen until the first frame, then a slim bar while the shell GLB streams in. */
+// Keeps the lit perimeter outside the model, which reaches past the seating.
+function ShellPerimeter({
+  venue,
+  shell,
+}: {
+  venue: VenueConfig;
+  shell: NonNullable<VenueConfig["shell"]>;
+}) {
+  return <Perimeter venue={venue} clear={useShellBounds(shell)} />;
+}
+
 function Loading({ ready, name }: { ready: boolean; name: string }) {
   const { active, progress } = useProgress();
   const percent = Math.round(progress);
@@ -312,7 +322,12 @@ function Stadium({
         <MatchNight venue={venue} />
         {venue.shell ? (
           <Suspense fallback={null}>
-            <Shell opening={box} shell={venue.shell} />
+            <Shell
+              accent={venue.branding.accent}
+              opening={box}
+              shell={venue.shell}
+            />
+            <ShellPerimeter venue={venue} shell={venue.shell} />
           </Suspense>
         ) : (
           <ProceduralShell bowl={bowl} />
@@ -335,13 +350,6 @@ function Stadium({
             }}
           />
         ))}
-        {selected && sold.size > 0 && (
-          <Crowd
-            seats={bowl.seats}
-            sold={sold}
-            accent={venue.branding.accent}
-          />
-        )}
         {venue.vipBoxes.length > 0 && (
           // Mounted from the start so entering a box doesn't change the scene's
           // light count, which would recompile every lit material.

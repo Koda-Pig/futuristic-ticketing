@@ -51,12 +51,18 @@ export function ProceduralShell({ bowl }: { bowl: Bowl }) {
   }, [bowl]);
   return (
     <group>
-      <mesh>
-        <bufferGeometry>
+      <mesh castShadow receiveShadow>
+        <bufferGeometry
+          onUpdate={(geometry) => geometry.computeVertexNormals()}
+        >
           <bufferAttribute attach="attributes-position" args={[positions, 3]} />
           <bufferAttribute attach="index" args={[indices, 1]} />
         </bufferGeometry>
-        <meshBasicMaterial color="#657077" side={DoubleSide} />
+        <meshStandardMaterial
+          color="#566574"
+          roughness={0.84}
+          side={DoubleSide}
+        />
       </mesh>
       {masts.map(([x, y, z], i) => (
         <mesh key={i} position={[x, y, z]}>
