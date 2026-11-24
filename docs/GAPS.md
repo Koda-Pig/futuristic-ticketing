@@ -1,6 +1,6 @@
 # Gaps against the reference reels
 
-Review of 2026-11-24. Method: frames taken from both reels (PLAN §2) and set beside the app running on the dev server (Cape Point), from the overview through to Confirm VIP. Every step of the flow works and the ticket card's fields match the reel. The gaps are in how it looks, how the camera moves, and the VIP steps.
+Review of 2026-11-24. Method: frames taken from both reels (PLAN §2) and set beside the app running on the dev server (Cape Point), from the overview through to Confirm VIP. The reels are kept locally as `assets/reference/omnyalab-football.mp4` and `assets/reference/ascenta-basketball.mp4`. They are not in git (`assets/` is ignored, and they are someone else's work), so ask Josh for them on a fresh clone. To get a contact sheet of a reel, run `ffmpeg -i <reel> -vf "fps=1,scale=480:-1,tile=4x8" -frames:v 1 sheet.jpg`. Every step of the flow works and the ticket card's fields match the reel. The gaps are in how it looks, how the camera moves, and the VIP steps.
 
 Ranked roughly by how much each one shows on screen. Gaps where the plan chose differently on purpose are marked **(by plan)**.
 
