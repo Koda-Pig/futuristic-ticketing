@@ -244,6 +244,12 @@ test("Riverside embed restores a seat, hands off both checkout prices and resets
   await expect(events).toContainText("ready", { timeout: 30000 });
   const frame = page.frames().find((f) => f.parentFrame())!;
   const url = new URL(frame.url());
+  const renderErrors: string[] = [];
+  page.on("console", (message) => {
+    if (message.type() === "error" && /shader/i.test(message.text()))
+      renderErrors.push(message.text());
+  });
+  url.searchParams.set("debug", "");
   url.searchParams.set("seat", seat.id);
   await frame.goto(url.href, { referer: host });
   const payload = {
@@ -292,6 +298,11 @@ test("Riverside embed restores a seat, hands off both checkout prices and resets
     checkoutId: expect.any(String),
   });
   expect(vip.checkoutId).not.toBe(standard.checkoutId);
+  await expect(frame.locator(".debug")).toContainText(
+    `camera height ${venue.cameras.overview.position[1].toFixed(1)} m`,
+    { timeout: 30000 },
+  );
+  expect(renderErrors).toEqual([]);
   await page.getByRole("button", { name: "Reset selection" }).click();
   await expect(frame.locator(".block-panel")).toHaveCount(0);
   // The URL follows the reset in an effect, after the panel has gone.

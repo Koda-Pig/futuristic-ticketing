@@ -11,12 +11,19 @@ import {
   useRef,
   useState,
 } from "react";
-import { ACESFilmicToneMapping, MathUtils, Vector3 } from "three";
+import {
+  ACESFilmicToneMapping,
+  type Curve,
+  LineCurve3,
+  MathUtils,
+  Vector3,
+} from "three";
 
 import { DPR, useQuality } from "../quality";
 
 import type { VenueConfig } from "../venue/schema";
 
+import { aerialDive, aerialPullback } from "./cameraFlight";
 import { SeatCamera } from "./SeatCamera";
 import type { Seat } from "../venue/generateBowl";
 
@@ -152,7 +159,7 @@ function DebugProbe({ out }: { out: RefObject<HTMLElement | null> }) {
       gl.info.autoReset = true;
     };
   }, [gl]);
-  useFrame((_, delta) => {
+  useFrame(({ camera }, delta) => {
     const s = sample.current;
     s.frames++;
     s.time += delta;
@@ -161,7 +168,7 @@ function DebugProbe({ out }: { out: RefObject<HTMLElement | null> }) {
       out.current.textContent =
         `${Math.round(s.frames / s.time)} fps · ${calls} draws · ` +
         `${(triangles / 1000).toFixed(0)}k tris · quality ${useQuality.getState().level} · ` +
-        `DPR ${gl.getPixelRatio()}`;
+        `DPR ${gl.getPixelRatio()} · camera height ${camera.position.y.toFixed(1)} m`;
       s.frames = s.time = 0;
     }
     gl.info.reset();
@@ -180,7 +187,8 @@ function CameraDirector({
 }) {
   const orbit = useRef<ComponentRef<typeof OrbitControls>>(null);
   const flight = useRef<{
-    position: Vector3;
+    path: Curve<Vector3>;
+    destination: Vector3;
     target: Vector3;
     elapsed: number;
     duration: number;
@@ -201,21 +209,33 @@ function CameraDirector({
       return;
     }
     if (previous.current === pose) return;
+    const previousSeated = previous.current === null;
     previous.current = pose;
     const from = control.object.position.clone();
+    const to = new Vector3(...pose.position);
     flight.current = {
-      position: from,
-      target: control.target.clone(),
+      // Swoop out of the rows only when leaving a seat; Back from a block
+      // view retreats straight up to the overview.
+      path: previousSeated
+        ? blockPose
+          ? new LineCurve3(from, to)
+          : aerialPullback(from, to)
+        : blockPose
+          ? aerialDive(from, to)
+          : new LineCurve3(from, to),
+      destination: new Vector3(...pose.target),
+      target: previousSeated
+        ? control.object
+            .getWorldDirection(new Vector3())
+            .multiplyScalar(12)
+            .add(from)
+        : control.target.clone(),
       elapsed: 0,
       // Longer hops take longer, but a short one never feels sluggish.
-      duration: MathUtils.clamp(
-        from.distanceTo(new Vector3(...pose.position)) / 140,
-        1.1,
-        1.9,
-      ),
+      duration: MathUtils.clamp(from.distanceTo(to) / 190, 0.75, 1.5),
     };
     control.enabled = false;
-  }, [pose, seated]);
+  }, [pose, seated, blockPose]);
   useFrame((_, delta) => {
     const move = flight.current,
       control = orbit.current;
@@ -228,14 +248,15 @@ function CameraDirector({
     control.maxDistance = Infinity;
     control.minAzimuthAngle = -Infinity;
     control.maxAzimuthAngle = Infinity;
-    control.object.position.lerpVectors(
-      move.position,
-      new Vector3(...pose.position),
-      ease,
+    move.path.getPoint(ease, control.object.position);
+    control.target.lerpVectors(
+      move.target,
+      move.destination,
+      MathUtils.smoothstep(t, 0, 0.68),
     );
-    control.target.lerpVectors(move.target, new Vector3(...pose.target), ease);
-    control.update();
+    control.object.lookAt(control.target);
     if (t === 1) {
+      control.update();
       const angle = control.getAzimuthalAngle();
       control.minAzimuthAngle = blockPose
         ? angle - (Math.PI * 25) / 180

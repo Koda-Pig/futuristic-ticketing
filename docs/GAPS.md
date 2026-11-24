@@ -12,9 +12,9 @@ Seats now have a cupped pan and curved backrest. Nearby blocks use the detailed 
 
 ## 2. Camera moves
 
-- The reels use fast swooping dives with motion blur: aerial, then top-down over the block, then down to the seat. The app's moves are plain and have no blur.
-- **Bug:** the camera path from the seat view to the skybox passes through the stand. One frame shows the inside of the concrete, with the VIP card cut off by geometry.
-- The omnyalab reel ends by pulling back to the aerial view. Not checked whether the app does this after Confirm.
+Addressed on 2026-11-24. The camera sweeps above the selected block, dives into the bowl and settles at the seat. Camera motion adds directional blur when post-processing is on. Reduced motion jumps to the destination and skips the blur.
+
+The VIP upgrade leaves the rows toward the pitch and enters the box through its front opening. Confirming either ticket pulls back to the aerial overview with the confirmation card still visible.
 
 ## 3. VIP upgrade
 
@@ -40,6 +40,5 @@ Seats now have a cupped pan and curved backrest. Nearby blocks use the detailed 
 
 ## Suggested order
 
-1. The camera path into the skybox (§2): a visible bug.
-2. Glass skybox, exterior shot and VIP card (§3).
-3. The rest of §4 and §5.
+1. Glass skybox, exterior shot and VIP card (§3).
+2. The rest of §4 and §5.

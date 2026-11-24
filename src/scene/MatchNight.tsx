@@ -17,6 +17,7 @@ import type { VenueConfig } from "../venue/schema";
 import { superellipse } from "../venue/superellipse";
 import { kickoff } from "../venue/format";
 import { boardTexture } from "./Stand";
+import { CameraMotionBlur } from "./CameraMotionBlur";
 import { useQuality } from "../quality";
 
 function turf({ width, length, kind }: VenueConfig["pitch"]) {
@@ -223,6 +224,9 @@ export function MatchNight({ venue }: { venue: VenueConfig }) {
       {/* The lowest quality level drops post-processing (bloom, vignette, SMAA). */}
       {quality > 0 && (
         <EffectComposer multisampling={0}>
+          {!matchMedia("(prefers-reduced-motion: reduce)").matches && (
+            <CameraMotionBlur />
+          )}
           <Bloom luminanceThreshold={1} intensity={0.5} mipmapBlur />
           <Vignette darkness={0.36} />
           <SMAA />

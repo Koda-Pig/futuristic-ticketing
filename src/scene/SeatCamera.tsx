@@ -7,6 +7,7 @@ import {
   Quaternion,
   Vector3,
 } from "three";
+import { boxApproach } from "./cameraFlight";
 import type { Seat } from "../venue/generateBowl";
 
 export type Viewpoint = Pick<Seat, "eye"> & { target?: Seat["eye"] };
@@ -20,7 +21,7 @@ export function aimAtPitch(camera: PerspectiveCamera, seat: Viewpoint) {
 export function SeatCamera({
   seat,
   entry,
-  duration = 1.2,
+  duration,
 }: {
   seat: Viewpoint;
   entry?: Seat["eye"];
@@ -31,7 +32,8 @@ export function SeatCamera({
   useLayoutEffect(() => {
     if (!(camera instanceof PerspectiveCamera)) return;
     const start = camera.position.clone();
-    const rotation = camera.quaternion.clone();
+    const startRotation = camera.quaternion.clone();
+    const rotation = startRotation.clone();
     const destination = camera.clone();
     aimAtPitch(destination, seat);
     const base = new Euler().setFromQuaternion(destination.quaternion, "YXZ");
@@ -69,22 +71,30 @@ export function SeatCamera({
     element.addEventListener("pointermove", move);
     element.addEventListener("lostpointercapture", end);
     const outside = entry && new Vector3(...entry);
+    const approach = outside && boxApproach(start, outside, eye);
+    const diveHeight =
+      duration === undefined ? Math.min(2.4, start.distanceTo(eye) * 0.1) : 0;
     step.current = (delta) => {
       elapsed += delta;
       const t = MathUtils.smoothstep(
         elapsed,
-        entry ? 1.3 : 0,
-        entry ? 2 : duration,
+        entry ? 0.95 : 0,
+        entry ? 1.55 : (duration ?? 0.85),
       );
-      if (outside && elapsed < 1.3) {
-        const u = MathUtils.smoothstep(elapsed, 0, 0.9);
-        camera.position.lerpVectors(start, outside, u);
-        camera.position.y += 12 * Math.sin(Math.PI * u);
+      if (approach && elapsed < 0.95) {
+        const u = MathUtils.smoothstep(elapsed, 0, 0.95);
+        approach.getPoint(u, camera.position);
         camera.lookAt(eye);
         rotation.copy(camera.quaternion);
+        camera.quaternion.slerpQuaternions(
+          startRotation,
+          rotation,
+          MathUtils.smoothstep(u, 0, 0.35),
+        );
         return;
       }
       camera.position.lerpVectors(outside || start, eye, t);
+      camera.position.y += diveHeight * Math.sin(Math.PI * t);
       look.setFromEuler(
         angles.set(
           base.x + MathUtils.degToRad(pitch),

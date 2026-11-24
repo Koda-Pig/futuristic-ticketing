@@ -312,10 +312,10 @@ function Stadium({
       <Stage
         venue={venue}
         overview
-        seat={view ?? selected}
+        seat={done ? null : (view ?? selected)}
         entry={entry}
         duration={view ? 0.8 : undefined}
-        blockPose={block?.flyIn}
+        blockPose={done ? undefined : block?.flyIn}
         stats={query.has("debug") ? stats : undefined}
         onReady={() => setReady(true)}
       >
