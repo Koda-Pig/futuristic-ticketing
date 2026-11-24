@@ -44,6 +44,8 @@ The v1 deliverable is a polished desktop demo on a public URL. It runs on a fict
 
 **What we take:** the omnyalab flow, ticket card and VIP seat choice; the ascenta night look, LED price ribbons and section outline on hover.
 
+Where the built app still falls short of these reels is tracked in [GAPS.md](GAPS.md).
+
 ---
 
 ## 3. Decisions log

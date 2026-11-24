@@ -4,7 +4,7 @@ A white-label, embeddable 3D seat picker. Buyers fly around a night-match stadiu
 
 It ships with two fictional venues: **Cape Point Stadium** (`cape-point`, the default, with a decorative shell model) and **Riverside Ground** (`riverside`, no shell, so the procedural one is used). Desktop only for v1; small or touch screens get a "Best experienced on desktop" notice.
 
-The plan is in [docs/PLAN.md](docs/PLAN.md), deviations from it in [docs/DECISIONS.md](docs/DECISIONS.md), measurements in [docs/PERF.md](docs/PERF.md) and the shell pipeline in [docs/ASSETS.md](docs/ASSETS.md).
+The plan is in [docs/PLAN.md](docs/PLAN.md), deviations from it in [docs/DECISIONS.md](docs/DECISIONS.md), measurements in [docs/PERF.md](docs/PERF.md), the shell pipeline in [docs/ASSETS.md](docs/ASSETS.md) and what still falls short of the reference reels in [docs/GAPS.md](docs/GAPS.md).
 
 ## Run
 
