@@ -15,8 +15,7 @@ import {
 } from "three";
 import type { VenueConfig } from "../venue/schema";
 import { superellipse } from "../venue/superellipse";
-import { kickoff } from "../venue/format";
-import { boardTexture } from "./Stand";
+import { Jumbotrons } from "./Jumbotron";
 import { CameraMotionBlur } from "./CameraMotionBlur";
 import { useQuality } from "../quality";
 
@@ -144,20 +143,7 @@ export function MatchNight({ venue }: { venue: VenueConfig }) {
   const quality = useQuality((q) => q.level);
   const apron = useMemo(floorGlow, []);
   useEffect(() => () => apron.dispose(), [apron]);
-  const screen = useMemo(() => {
-    const { day, time } = kickoff(venue);
-    return boardTexture(
-      `${venue.event.home} vs ${venue.event.away} · ${day} ${time}`,
-      venue.branding.accent,
-    );
-  }, [venue]);
-  useEffect(
-    () => () => {
-      pitch.dispose();
-      screen.dispose();
-    },
-    [pitch, screen],
-  );
+  useEffect(() => () => pitch.dispose(), [pitch]);
   const x = venue.outline.halfWidth + 39,
     z = venue.outline.halfLength + 39;
   return (
@@ -173,6 +159,7 @@ export function MatchNight({ venue }: { venue: VenueConfig }) {
         <planeGeometry args={[venue.pitch.width + 8, venue.pitch.length + 8]} />
         <meshStandardMaterial map={pitch} />
       </mesh>
+      <Jumbotrons venue={venue} />
       {[-1, 1].map((end) => (
         <group key={end}>
           <group position={[0, 0, (venue.pitch.length / 2) * end]}>
@@ -187,13 +174,6 @@ export function MatchNight({ venue }: { venue: VenueConfig }) {
               <meshBasicMaterial />
             </mesh>
           </group>
-          <mesh
-            position={[0, 24, end * (z - 8)]}
-            rotation-y={end === 1 ? Math.PI : 0}
-          >
-            <planeGeometry args={[28, 3.5]} />
-            <meshBasicMaterial map={screen} color={[2, 2, 2]} />
-          </mesh>
           {[-1, 1].map((side) => (
             <group key={side}>
               <directionalLight

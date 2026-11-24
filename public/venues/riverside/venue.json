@@ -46,6 +46,22 @@
       "riser": 0.44,
       "seatWidth": 0.5,
       "gateLetter": "U"
+    },
+    {
+      "id": "premium-suites",
+      "label": "Premium Suites",
+      "offset": 20.5,
+      "baseHeight": 11.2,
+      "rows": 3,
+      "rowsByStand": {
+        "east": 0,
+        "south": 0
+      },
+      "rowDepth": 1.05,
+      "riser": 0.38,
+      "seatWidth": 0.78,
+      "seatColor": "#cd7046",
+      "gateLetter": "P"
     }
   ],
   "stands": [
@@ -88,6 +104,11 @@
         "east": 40,
         "south": 30,
         "west": 40
+      },
+      "premium-suites": {
+        "east": 95,
+        "south": 95,
+        "west": 95
       }
     },
     "vip": {

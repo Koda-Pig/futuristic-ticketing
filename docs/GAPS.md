@@ -28,11 +28,8 @@ Addressed on 2026-11-24. Hovering a stand tints it orange and shows its remainin
 
 Price panels sit below the front tread of each tier and fit whole labels to each block. The seat preview tracks its chair as the camera moves. The ticket floats near the centre with a slight tilt. Outside the skybox and in the chair picker, the VIP ticket docks to the right (to the bottom on narrow screens) and the view shifts into the space beside it, widening in the picker so every recliner stays clear and clickable.
 
-## 5. Not yet taken from the ascenta reel
+## 5. Jumbotrons and premium suites
 
-- A jumbotron showing the matchup.
-- A separate premium-suites tier with its own ribbon ("PREMIUM SUITES FROM $480").
+Addressed on 2026-11-24. Both ends of each pitch have a jumbotron showing the home and away teams and the local kickoff. Cape Point uses the screen mounts in the stadium model.
 
-## Suggested order
-
-Remaining ascenta features (§5).
+Premium Suites has its own bookable blocks, copper-coloured seats and a price ribbon. The suites start at R2 400 in Cape Point’s east stand and £95 in Riverside’s west stand. Selecting a suite seat uses the regular ticket flow, with the VIP skybox available as a separate upgrade.

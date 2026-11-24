@@ -19,7 +19,7 @@ export function soldSeats(
   for (const block of bowl.blocks) {
     const band = soldRatio[1] - soldRatio[0];
     const sideline = Math.abs(block.centroid[0]) > Math.abs(block.centroid[2]);
-    const middle = bowl.tiers.length > 2 && block.tierId === bowl.tiers[1].id;
+    const middle = block.tierId === "middle";
     const ratio =
       soldRatio[0] +
       band * (random() * 0.7 + Number(sideline) * 0.2 + Number(middle) * 0.1);

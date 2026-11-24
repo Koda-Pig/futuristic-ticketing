@@ -66,6 +66,27 @@
       "riser": 0.44,
       "seatWidth": 0.5,
       "gateLetter": "U"
+    },
+    {
+      "id": "premium-suites",
+      "label": "Premium Suites",
+      "offset": 13,
+      "baseHeight": 8.0,
+      "rows": 3,
+      "rowsByStand": {
+        "south-east": 0,
+        "south": 0,
+        "south-west": 0,
+        "west": 0,
+        "north-west": 0,
+        "north": 0,
+        "north-east": 0
+      },
+      "rowDepth": 1.05,
+      "riser": 0.38,
+      "seatWidth": 0.78,
+      "seatColor": "#cd7046",
+      "gateLetter": "P"
     }
   ],
   "stands": [
@@ -220,6 +241,16 @@
         "north-west": 300,
         "north": 300,
         "north-east": 300
+      },
+      "premium-suites": {
+        "east": 2400,
+        "south-east": 2400,
+        "south": 2400,
+        "south-west": 2400,
+        "west": 2400,
+        "north-west": 2400,
+        "north": 2400,
+        "north-east": 2400
       }
     },
     "vip": {
@@ -269,6 +300,7 @@
     "gltfUrl": "/venues/cape-point/shell.a247ce47d4.glb.gz",
     "credit": "Stadium model: “Modern Stadium” by Razny (Sketchfab), Sketchfab Standard licence"
   },
+  "endScreen": { "distance": 65.8, "height": 21.5 },
   "cameras": {
     "overview": {
       "position": [-143, 116, 163],

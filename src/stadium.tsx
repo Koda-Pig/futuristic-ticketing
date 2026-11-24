@@ -532,6 +532,7 @@ function Stadium({
         <Bowl
           bowl={bowl}
           hidden={nearbyIds}
+          muted={!!block && !done}
           accent={block && !done ? "#414c57" : venue.branding.accent}
         />
         {groups.map(({ stand, blocks }) => (

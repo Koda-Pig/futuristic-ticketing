@@ -97,7 +97,7 @@ export function Stand({
           geometry,
           texture: boardTexture(
             tier.label + " · FROM " + money(venue, price),
-            venue.branding.accent,
+            tier.seatColor ?? venue.branding.accent,
           ),
         },
       ];
@@ -122,6 +122,26 @@ export function Stand({
   );
   return (
     <>
+      {venue.shell &&
+        blocks
+          .filter((block) => block.tierId === "premium-suites")
+          .map((block) => (
+            <mesh key={block.id} position-y={-SEAT_PAN_HEIGHT} receiveShadow>
+              <bufferGeometry
+                onUpdate={(geometry) => geometry.computeVertexNormals()}
+              >
+                <bufferAttribute
+                  attach="attributes-position"
+                  args={[block.hitMesh.positions, 3]}
+                />
+                <bufferAttribute
+                  attach="index"
+                  args={[block.hitMesh.indices, 1]}
+                />
+              </bufferGeometry>
+              <meshStandardMaterial color="#45414a" side={DoubleSide} />
+            </mesh>
+          ))}
       <mesh
         geometry={surfaces.hit}
         position-y={0.35}

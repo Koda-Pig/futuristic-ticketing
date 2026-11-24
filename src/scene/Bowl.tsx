@@ -12,20 +12,23 @@ const geometry = seatShell(false);
 type Props = {
   bowl: BowlData;
   accent: string;
+  muted?: boolean;
   /** Blocks drawn elsewhere (the detailed seats near the camera). */
   hidden?: ReadonlySet<string>;
 };
 
 const NONE: ReadonlySet<string> = new Set();
 
-export function Bowl({ bowl, accent, hidden = NONE }: Props) {
+export function Bowl({ bowl, accent, muted = false, hidden = NONE }: Props) {
   // Tiers get slightly different shades of the accent so they read apart.
   const colors = useMemo(
     () =>
-      bowl.tiers.map((_, index) =>
-        new Color(accent).offsetHSL(0, 0, (index - 1) * -0.08),
+      bowl.tiers.map((tier, index) =>
+        tier.seatColor && !muted
+          ? new Color(tier.seatColor)
+          : new Color(accent).offsetHSL(0, 0, (index - 1) * -0.08),
       ),
-    [bowl.tiers, accent],
+    [bowl.tiers, accent, muted],
   );
   return bowl.tiers.map((tier, index) => (
     <TierSeats

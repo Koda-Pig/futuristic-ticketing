@@ -68,6 +68,7 @@ export const venueSchema = z
           rowDepth: positive,
           riser: positive,
           seatWidth: positive,
+          seatColor: z.optional(color),
           gateLetter: name,
         }),
       )
@@ -127,6 +128,10 @@ export const venueSchema = z
         rotationY: z.optional(z.number()),
         scale: z.optional(positive),
       }),
+    ),
+    // Optional mounting position for screens on an existing stadium model.
+    endScreen: z.optional(
+      z.strictObject({ distance: positive, height: positive }),
     ),
     cameras: z.strictObject({
       overview: z.strictObject({ position, target: position }),
